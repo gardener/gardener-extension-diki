@@ -1,11 +1,11 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 aliases:
-  diki-reviewers:
+  extension-diki-reviewers:
   - AleksandarSavchev
   - georgibaltiev
   - dimityrmirchev
-  diki-approvers:
+  extension-diki-approvers:
   - AleksandarSavchev
   - georgibaltiev
   - dimityrmirchev
