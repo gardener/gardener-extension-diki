@@ -26,6 +26,5 @@ Please find the documentation in the [`/docs`](./docs) directory.
 ## Feedback and Support
 
 Feedback and contributions are always welcome. Please report bugs or suggestions as
-[GitHub issues](https://github.com/gardener/gardener-extension-diki/issues) or join our
-[Slack channel #gardener](https://kubernetes.slack.com/messages/gardener) (please invite
-yourself to the [Kubernetes workspace](http://slack.k8s.io)).
+[GitHub issues](https://github.com/gardener/gardener-extension-diki/issues) or join
+us on [Slack](https://gardener-cloud.slack.com/) (join the workspace [here](https://gardener.cloud/community/)).
