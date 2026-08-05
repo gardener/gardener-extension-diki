@@ -1,6 +1,6 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 reviewers:
-- extension-diki-reviewers
+- gardener-extension-diki-reviewers
 approvers:
-- extension-diki-approvers
+- gardener-extension-diki-approvers

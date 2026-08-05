@@ -1,11 +1,11 @@
 # See the OWNERS docs at https://go.k8s.io/owners
 
 aliases:
-  extension-diki-reviewers:
+  gardener-extension-diki-reviewers:
   - AleksandarSavchev
   - georgibaltiev
   - dimityrmirchev
-  extension-diki-approvers:
+  gardener-extension-diki-approvers:
   - AleksandarSavchev
   - georgibaltiev
   - dimityrmirchev
