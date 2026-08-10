@@ -1,0 +1,19 @@
+apiVersion: operator.gardener.cloud/v1alpha1
+kind: Extension
+metadata:
+  annotations:
+    security.gardener.cloud/pod-security-enforce: baseline
+  name: extension-diki
+spec:
+  deployment:
+    extension:
+      helm:
+        ociRepository:
+          ref: europe-docker.pkg.dev/gardener-project/public/charts/gardener/extensions/diki:v0.1.0-dev
+  resources:
+  - kind: Extension
+    lifecycle:
+      delete: BeforeKubeAPIServer
+      migrate: AfterKubeAPIServer
+      reconcile: AfterKubeAPIServer
+    type: diki
