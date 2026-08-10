@@ -1,0 +1,83 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: gardener-extension-diki
+  labels:
+    app.kubernetes.io/name: gardener-extension-diki
+    helm.sh/chart: gardener-extension-diki
+    app.kubernetes.io/instance: {{ .Release.Name }}
+rules:
+- apiGroups:
+  - extensions.gardener.cloud
+  resources:
+  - clusters
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions.gardener.cloud
+  resources:
+  - extensions
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - extensions.gardener.cloud
+  resources:
+  - extensions
+  - extensions/status
+  resourceNames:
+  - diki
+  verbs:
+  - patch
+  - update
+- apiGroups:
+  - resources.gardener.cloud
+  resources:
+  - managedresources
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+- apiGroups:
+  - resources.gardener.cloud
+  resources:
+  - managedresources
+  resourceNames:
+  - extension-diki-seed
+  - extension-diki-shoot
+  verbs:
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - create
+  - get
+  - list
+  - watch
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - coordination.k8s.io
+  resources:
+  - leases
+  verbs:
+  - list
+  - watch
