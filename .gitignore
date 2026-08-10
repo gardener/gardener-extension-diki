@@ -1,0 +1,27 @@
+# Binaries for programs and plugins
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin
+testbin
+
+# Test binary, built with `go test -c`
+*.test
+
+# Output of the go coverage tool, specifically when used with LiteIDE
+*.out
+
+# Local dev artifacts
+dev/
+/hack/tools/bin
+
+# gosec
+gosec-report.sarif
+
+# Visual Studio Code settings
+.vscode/
+
+# Claude settings
+.claude/
