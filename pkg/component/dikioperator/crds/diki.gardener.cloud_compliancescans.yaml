@@ -1,0 +1,337 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.0
+  name: compliancescans.diki.gardener.cloud
+spec:
+  group: diki.gardener.cloud
+  names:
+    kind: ComplianceScan
+    listKind: ComplianceScanList
+    plural: compliancescans
+    shortNames:
+    - cscan
+    singular: compliancescan
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - description: Current phase of the compliance scan
+      jsonPath: .status.phase
+      name: Phase
+      type: string
+    - description: Creation timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ComplianceScan describes a compliance scan.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec contains the specification of this compliance scan.
+            properties:
+              outputs:
+                description: Outputs describe the outputs of the compliance scan.
+                items:
+                  description: ReportOutputRef describes a reference to a report output.
+                  properties:
+                    name:
+                      description: Name is the name of the report output.
+                      type: string
+                  required:
+                  - name
+                  type: object
+                type: array
+              rulesets:
+                description: Rulesets describe the rulesets to be applied during the
+                  compliance scan.
+                items:
+                  description: RulesetConfig describes the configuration of a ruleset.
+                  properties:
+                    id:
+                      description: ID is the identifier of the ruleset.
+                      type: string
+                    options:
+                      description: Options are options for a ruleset.
+                      properties:
+                        rules:
+                          description: |-
+                            Rules contains references to rule options.
+                            Users can use these to configure the behaviour of specific rules.
+                          properties:
+                            configMapRef:
+                              description: ConfigMapRef is a reference to a ConfigMap
+                                containing options.
+                              properties:
+                                key:
+                                  description: Key is the key within the ConfigMap,
+                                    where the options are stored.
+                                  type: string
+                                name:
+                                  description: Name is the name of the ConfigMap.
+                                  type: string
+                                namespace:
+                                  description: Namespace is the namespace of the ConfigMap.
+                                  type: string
+                              required:
+                              - name
+                              - namespace
+                              type: object
+                          type: object
+                        ruleset:
+                          description: Ruleset contains global options for the ruleset.
+                          properties:
+                            configMapRef:
+                              description: ConfigMapRef is a reference to a ConfigMap
+                                containing options.
+                              properties:
+                                key:
+                                  description: Key is the key within the ConfigMap,
+                                    where the options are stored.
+                                  type: string
+                                name:
+                                  description: Name is the name of the ConfigMap.
+                                  type: string
+                                namespace:
+                                  description: Namespace is the namespace of the ConfigMap.
+                                  type: string
+                              required:
+                              - name
+                              - namespace
+                              type: object
+                          type: object
+                      type: object
+                    version:
+                      description: Version is the version of the ruleset.
+                      type: string
+                  required:
+                  - id
+                  - version
+                  type: object
+                type: array
+            type: object
+          status:
+            description: Status contains the status of this compliance scan.
+            properties:
+              conditions:
+                description: Conditions contains the conditions of the ComplianceScan.
+                items:
+                  description: Condition describes a condition of a ComplianceScan.
+                  properties:
+                    lastTransitionTime:
+                      description: LastTransitionTime is the last time the condition
+                        transitioned from one status to another.
+                      format: date-time
+                      type: string
+                    lastUpdateTime:
+                      description: LastUpdateTime is the last time the condition was
+                        updated.
+                      format: date-time
+                      type: string
+                    message:
+                      description: Message is a human-readable message indicating
+                        details about the last transition.
+                      type: string
+                    reason:
+                      description: Reason is a brief reason for the condition's last
+                        transition.
+                      type: string
+                    status:
+                      description: Status is the status of the condition.
+                      type: string
+                    type:
+                      description: Type is the type of the condition.
+                      type: string
+                  required:
+                  - lastTransitionTime
+                  - lastUpdateTime
+                  - message
+                  - reason
+                  - status
+                  - type
+                  type: object
+                type: array
+              outputs:
+                description: Outputs contain the output statuses of the ComplianceScan.
+                items:
+                  description: OutputStatus contains the status of a specific output
+                    of a compliance scan.
+                  properties:
+                    details:
+                      description: Details contains details about the output.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
+                    outputName:
+                      description: OutputName is the name of the report output.
+                      type: string
+                    phase:
+                      description: Phase represents the final phase of the output
+                        after the exporter has processed it.
+                      type: string
+                  required:
+                  - outputName
+                  - phase
+                  type: object
+                type: array
+              phase:
+                description: Phase represents the current phase of the ComplianceScan.
+                type: string
+              rulesets:
+                description: Rulesets contains the ruleset summaries of the ComplianceScan.
+                items:
+                  description: RulesetSummary contains the identifiers and the summary
+                    for a specific ruleset.
+                  properties:
+                    id:
+                      description: ID is the identifier of the ruleset that is summarized.
+                      type: string
+                    results:
+                      description: Results contains the results of the ruleset.
+                      properties:
+                        rules:
+                          description: Rules contains information about the specific
+                            rules that have errored/warned/failed.
+                          properties:
+                            errored:
+                              description: Errored contains information about the
+                                rules that have an Errored status.
+                              items:
+                                description: Rule contains information about the ID
+                                  and the name of the rule that contains the findings.
+                                properties:
+                                  id:
+                                    description: ID is the unique identifier of the
+                                      rule which contains the finding.
+                                    type: string
+                                  name:
+                                    description: Name is the name of the rule which
+                                      contains the finding.
+                                    type: string
+                                required:
+                                - id
+                                - name
+                                type: object
+                              type: array
+                            failed:
+                              description: Failed contains information about the rules
+                                that have a Failed status.
+                              items:
+                                description: Rule contains information about the ID
+                                  and the name of the rule that contains the findings.
+                                properties:
+                                  id:
+                                    description: ID is the unique identifier of the
+                                      rule which contains the finding.
+                                    type: string
+                                  name:
+                                    description: Name is the name of the rule which
+                                      contains the finding.
+                                    type: string
+                                required:
+                                - id
+                                - name
+                                type: object
+                              type: array
+                            warning:
+                              description: Warning contains information about the
+                                rules that have a Warning status.
+                              items:
+                                description: Rule contains information about the ID
+                                  and the name of the rule that contains the findings.
+                                properties:
+                                  id:
+                                    description: ID is the unique identifier of the
+                                      rule which contains the finding.
+                                    type: string
+                                  name:
+                                    description: Name is the name of the rule which
+                                      contains the finding.
+                                    type: string
+                                required:
+                                - id
+                                - name
+                                type: object
+                              type: array
+                          type: object
+                        summary:
+                          description: Summary contains information about the amount
+                            of rules per each status.
+                          properties:
+                            accepted:
+                              description: Accepted counts the amount of rules in
+                                a specific ruleset that have been accepted.
+                              format: int32
+                              type: integer
+                            errored:
+                              description: Errored counts the amount of rules in a
+                                specific ruleset that have errored.
+                              format: int32
+                              type: integer
+                            failed:
+                              description: Failed counts the amount of rules in a
+                                specific ruleset that have failed.
+                              format: int32
+                              type: integer
+                            passed:
+                              description: Passed counts the amount of rules in a
+                                specific ruleset that have passed.
+                              format: int32
+                              type: integer
+                            skipped:
+                              description: Skipped counts the amount of rules in a
+                                specific ruleset that have been skipped.
+                              format: int32
+                              type: integer
+                            warning:
+                              description: Warning counts the amount of rules in a
+                                specific ruleset that have returned a warning.
+                              format: int32
+                              type: integer
+                          required:
+                          - accepted
+                          - errored
+                          - failed
+                          - passed
+                          - skipped
+                          - warning
+                          type: object
+                      required:
+                      - summary
+                      type: object
+                    version:
+                      description: Version is the version of the ruleset that is summarized.
+                      type: string
+                  required:
+                  - id
+                  - results
+                  - version
+                  type: object
+                type: array
+            required:
+            - phase
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
