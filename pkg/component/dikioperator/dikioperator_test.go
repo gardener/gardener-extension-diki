@@ -188,12 +188,23 @@ var _ = Describe("Component", func() {
 	})
 
 	Describe("#Destroy", func() {
-		It("should delete both ManagedResources", func() {
+		It("should delete both ManagedResources and wait for deletion", func() {
 			Expect(fakeClient.Create(ctx, managedResourceSeed)).To(Succeed())
 			Expect(fakeClient.Create(ctx, managedResourceShoot)).To(Succeed())
 
 			comp = dikioperator.New(fakeClient, values)
-			Expect(comp.Destroy(ctx)).To(Succeed())
+			Expect(comp.Destroy(ctx, false)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(managedResourceSeed), managedResourceSeed)).To(BeNotFoundError())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(managedResourceShoot), managedResourceShoot)).To(BeNotFoundError())
+		})
+
+		It("should delete both ManagedResources without waiting when forceDelete is true", func() {
+			Expect(fakeClient.Create(ctx, managedResourceSeed)).To(Succeed())
+			Expect(fakeClient.Create(ctx, managedResourceShoot)).To(Succeed())
+
+			comp = dikioperator.New(fakeClient, values)
+			Expect(comp.Destroy(ctx, true)).To(Succeed())
 
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(managedResourceSeed), managedResourceSeed)).To(BeNotFoundError())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(managedResourceShoot), managedResourceShoot)).To(BeNotFoundError())
@@ -215,20 +226,6 @@ var _ = Describe("Component", func() {
 			Expect(comp.Wait(ctx)).To(MatchError(ContainSubstring("is not healthy")))
 		})
 	})
-
-	Describe("#WaitCleanup", func() {
-		It("should fail when the managed resource still exists", func() {
-			Expect(fakeClient.Create(ctx, managedResourceSeed)).To(Succeed())
-
-			comp = dikioperator.New(fakeClient, values)
-			Expect(comp.WaitCleanup(ctx)).To(MatchError(ContainSubstring("still exists")))
-		})
-
-		It("should succeed when managed resources are gone", func() {
-			comp = dikioperator.New(fakeClient, values)
-			Expect(comp.WaitCleanup(ctx)).To(Succeed())
-		})
-	})
 })
 
 // Expected seed resources
@@ -236,9 +233,9 @@ var _ = Describe("Component", func() {
 func expectedServiceAccount() *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: "shoot--foo--bar",
-			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
 		AutomountServiceAccountToken: ptr.To(false),
 	}
@@ -249,7 +246,7 @@ func expectedRunServiceAccount() *corev1.ServiceAccount {
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "diki-run",
 			Namespace: "shoot--foo--bar",
-			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
 		AutomountServiceAccountToken: ptr.To(false),
 	}
@@ -258,9 +255,9 @@ func expectedRunServiceAccount() *corev1.ServiceAccount {
 func expectedConfigMap() *corev1.ConfigMap {
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: "shoot--foo--bar",
-			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
 	}
 }
@@ -268,21 +265,21 @@ func expectedConfigMap() *corev1.ConfigMap {
 func expectedDeployment(replicas int32) *appsv1.Deployment {
 	dep := &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: "shoot--foo--bar",
 			Labels: utils.MergeStringMaps(
-				map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+				map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 				map[string]string{resourcesv1alpha1.HighAvailabilityConfigType: resourcesv1alpha1.HighAvailabilityConfigTypeServer},
 			),
 		},
 		Spec: appsv1.DeploymentSpec{
 			Replicas:             ptr.To(replicas),
 			RevisionHistoryLimit: ptr.To[int32](2),
-			Selector:             &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+			Selector:             &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
 					Labels: map[string]string{
-						"app.kubernetes.io/name":                              constants.DikiOperatorServiceName,
+						"app.kubernetes.io/name":                              constants.DikiOperatorName,
 						v1beta1constants.LabelNetworkPolicyToDNS:              v1beta1constants.LabelNetworkPolicyAllowed,
 						v1beta1constants.LabelNetworkPolicyToRuntimeAPIServer: v1beta1constants.LabelNetworkPolicyAllowed,
 						gutil.NetworkPolicyLabel(v1beta1constants.DeploymentNameKubeAPIServer, kubeapiserverconstants.Port): v1beta1constants.LabelNetworkPolicyAllowed,
@@ -290,7 +287,7 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 				},
 				Spec: corev1.PodSpec{
 					PriorityClassName:  v1beta1constants.PriorityClassNameShootControlPlane300,
-					ServiceAccountName: constants.DikiOperatorServiceName,
+					ServiceAccountName: constants.DikiOperatorName,
 					SecurityContext: &corev1.PodSecurityContext{
 						SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
 						RunAsNonRoot:   ptr.To(true),
@@ -300,7 +297,7 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 					},
 					AutomountServiceAccountToken: ptr.To(true),
 					Containers: []corev1.Container{{
-						Name:            constants.DikiOperatorServiceName,
+						Name:            constants.DikiOperatorName,
 						Image:           "europe-docker.pkg.dev/gardener-project/releases/gardener/diki-operator:v0.1.0",
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Args: []string{
@@ -341,7 +338,7 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 							Name: "diki-operator-config",
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
-									LocalObjectReference: corev1.LocalObjectReference{Name: constants.DikiOperatorServiceName},
+									LocalObjectReference: corev1.LocalObjectReference{Name: constants.DikiOperatorName},
 									DefaultMode:          ptr.To[int32](0440),
 								},
 							},
@@ -367,9 +364,9 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 func expectedService() *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: "shoot--foo--bar",
-			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 			Annotations: map[string]string{
 				"networking.resources.gardener.cloud/from-all-scrape-targets-allowed-ports":  `[{"protocol":"TCP","port":8080}]`,
 				"networking.resources.gardener.cloud/from-all-webhook-targets-allowed-ports": `[{"protocol":"TCP","port":10443}]`,
@@ -377,7 +374,7 @@ func expectedService() *corev1.Service {
 		},
 		Spec: corev1.ServiceSpec{
 			Type:     corev1.ServiceTypeClusterIP,
-			Selector: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+			Selector: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 			Ports: []corev1.ServicePort{
 				{Name: "metrics", Port: 8080, Protocol: corev1.ProtocolTCP, TargetPort: intstr.FromInt32(8080)},
 				{Name: "webhooks", Port: 443, Protocol: corev1.ProtocolTCP, TargetPort: intstr.FromInt32(10443)},
@@ -388,9 +385,9 @@ func expectedService() *corev1.Service {
 
 func expectedServiceMonitor() *monitoringv1.ServiceMonitor {
 	return &monitoringv1.ServiceMonitor{
-		ObjectMeta: monitoringutils.ConfigObjectMeta(constants.DikiOperatorServiceName, "shoot--foo--bar", "shoot"),
+		ObjectMeta: monitoringutils.ConfigObjectMeta(constants.DikiOperatorName, "shoot--foo--bar", "shoot"),
 		Spec: monitoringv1.ServiceMonitorSpec{
-			Selector: metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+			Selector: metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 			Endpoints: []monitoringv1.Endpoint{{
 				Port: "metrics",
 			}},
@@ -401,15 +398,15 @@ func expectedServiceMonitor() *monitoringv1.ServiceMonitor {
 func expectedVPA() *vpaautoscalingv1.VerticalPodAutoscaler {
 	return &vpaautoscalingv1.VerticalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName + "-vpa",
+			Name:      constants.DikiOperatorName,
 			Namespace: "shoot--foo--bar",
-			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
 		Spec: vpaautoscalingv1.VerticalPodAutoscalerSpec{
 			TargetRef: &autoscalingv1.CrossVersionObjectReference{
 				APIVersion: appsv1.SchemeGroupVersion.String(),
 				Kind:       "Deployment",
-				Name:       constants.DikiOperatorServiceName,
+				Name:       constants.DikiOperatorName,
 			},
 			UpdatePolicy: &vpaautoscalingv1.PodUpdatePolicy{
 				UpdateMode: ptr.To(vpaautoscalingv1.UpdateModeInPlaceOrRecreate),
@@ -417,7 +414,7 @@ func expectedVPA() *vpaautoscalingv1.VerticalPodAutoscaler {
 			ResourcePolicy: &vpaautoscalingv1.PodResourcePolicy{
 				ContainerPolicies: []vpaautoscalingv1.ContainerResourcePolicy{
 					{
-						ContainerName:    constants.DikiOperatorServiceName,
+						ContainerName:    constants.DikiOperatorName,
 						ControlledValues: ptr.To(vpaautoscalingv1.ContainerControlledValuesRequestsOnly),
 						MinAllowed:       corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("32Mi")},
 					},
@@ -434,9 +431,9 @@ func expectedVPA() *vpaautoscalingv1.VerticalPodAutoscaler {
 func expectedRole() *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: "shoot--foo--bar",
-			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
 		Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{""}, Resources: []string{"configmaps"}, Verbs: []string{"create"}},
@@ -448,13 +445,13 @@ func expectedRole() *rbacv1.Role {
 func expectedRoleBinding() *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: "shoot--foo--bar",
-			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName},
+			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
-		RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: constants.DikiOperatorServiceName},
+		RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: constants.DikiOperatorName},
 		Subjects: []rbacv1.Subject{
-			{Kind: rbacv1.ServiceAccountKind, Name: constants.DikiOperatorServiceName, Namespace: "shoot--foo--bar"},
+			{Kind: rbacv1.ServiceAccountKind, Name: constants.DikiOperatorName, Namespace: "shoot--foo--bar"},
 		},
 	}
 }
@@ -463,7 +460,7 @@ func expectedRoleBinding() *rbacv1.RoleBinding {
 
 func expectedOperatorClusterRole() *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{Name: "diki-operator", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "diki-operator", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{"diki.gardener.cloud"}, Resources: []string{"compliancescans"}, Verbs: []string{"create", "delete"}},
 			{APIGroups: []string{"diki.gardener.cloud"}, Resources: []string{"compliancescans", "compliancescans/status", "scheduledcompliancescans", "scheduledcompliancescans/status"}, Verbs: []string{"get", "list", "watch", "update", "patch"}},
@@ -475,7 +472,7 @@ func expectedOperatorClusterRole() *rbacv1.ClusterRole {
 
 func expectedOperatorClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: "diki-operator", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "diki-operator", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: "diki-operator"},
 		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: "diki-operator", Namespace: metav1.NamespaceSystem}},
 	}
@@ -483,7 +480,7 @@ func expectedOperatorClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 
 func expectedScannerClusterRole() *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{Name: "scanner.diki.gardener.cloud", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "scanner.diki.gardener.cloud", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{""}, Resources: []string{"configmaps", "nodes", "nodes/proxy", "namespaces", "pods", "replicationcontrollers", "services"}, Verbs: []string{"get", "list"}},
 			{APIGroups: []string{"apps"}, Resources: []string{"daemonsets", "deployments", "replicasets", "statefulsets"}, Verbs: []string{"get", "list"}},
@@ -498,7 +495,7 @@ func expectedScannerClusterRole() *rbacv1.ClusterRole {
 
 func expectedScannerClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: "diki-scanner", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "diki-scanner", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: "scanner.diki.gardener.cloud"},
 		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: "diki-runner", Namespace: metav1.NamespaceSystem}},
 	}
@@ -506,7 +503,7 @@ func expectedScannerClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 
 func expectedScannerRole() *rbacv1.Role {
 	return &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{Name: "scanner.diki.gardener.cloud", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "scanner.diki.gardener.cloud", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{""}, Resources: []string{"pods"}, Verbs: []string{"create", "delete"}},
 			{APIGroups: []string{""}, Resources: []string{"pods/exec"}, Verbs: []string{"create"}},
@@ -516,7 +513,7 @@ func expectedScannerRole() *rbacv1.Role {
 
 func expectedScannerRoleBinding() *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: "diki-scanner", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "diki-scanner", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: "scanner.diki.gardener.cloud"},
 		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: "diki-runner", Namespace: metav1.NamespaceSystem}},
 	}
@@ -524,7 +521,7 @@ func expectedScannerRoleBinding() *rbacv1.RoleBinding {
 
 func expectedExporterClusterRole() *rbacv1.ClusterRole {
 	return &rbacv1.ClusterRole{
-		ObjectMeta: metav1.ObjectMeta{Name: "exporter.diki.gardener.cloud", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "exporter.diki.gardener.cloud", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{"diki.gardener.cloud"}, Resources: []string{"compliancescans"}, Verbs: []string{"get"}},
 			{APIGroups: []string{"diki.gardener.cloud"}, Resources: []string{"compliancescans/status"}, Verbs: []string{"get", "patch"}},
@@ -535,7 +532,7 @@ func expectedExporterClusterRole() *rbacv1.ClusterRole {
 
 func expectedExporterClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 	return &rbacv1.ClusterRoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: "diki-exporter", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "diki-exporter", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "ClusterRole", Name: "exporter.diki.gardener.cloud"},
 		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: "diki-runner", Namespace: metav1.NamespaceSystem}},
 	}
@@ -543,7 +540,7 @@ func expectedExporterClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 
 func expectedLeaderElectionRole() *rbacv1.Role {
 	return &rbacv1.Role{
-		ObjectMeta: metav1.ObjectMeta{Name: constants.DikiOperatorServiceName + "-leader-election", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: constants.DikiOperatorName + "-leader-election", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{"", "events.k8s.io"}, Resources: []string{"events"}, Verbs: []string{"create", "update", "patch"}},
 			{APIGroups: []string{"coordination.k8s.io"}, Resources: []string{"leases"}, Verbs: []string{"get", "create", "update"}},
@@ -553,8 +550,8 @@ func expectedLeaderElectionRole() *rbacv1.Role {
 
 func expectedLeaderElectionRoleBinding() *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
-		ObjectMeta: metav1.ObjectMeta{Name: constants.DikiOperatorServiceName + "-leader-election", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
-		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: constants.DikiOperatorServiceName + "-leader-election"},
+		ObjectMeta: metav1.ObjectMeta{Name: constants.DikiOperatorName + "-leader-election", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
+		RoleRef:    rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: constants.DikiOperatorName + "-leader-election"},
 		Subjects:   []rbacv1.Subject{{Kind: rbacv1.ServiceAccountKind, Name: "diki-operator", Namespace: metav1.NamespaceSystem}},
 	}
 }
@@ -565,7 +562,7 @@ func expectedValidatingWebhookConfiguration() *admissionregistrationv1.Validatin
 	sideEffects := admissionregistrationv1.SideEffectClassNone
 
 	return &admissionregistrationv1.ValidatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{Name: "gardener-extension-diki", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "gardener-extension-diki", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		Webhooks: []admissionregistrationv1.ValidatingWebhook{
 			{
 				Name:                    "compliancescans.diki.gardener.cloud",
@@ -574,7 +571,7 @@ func expectedValidatingWebhookConfiguration() *admissionregistrationv1.Validatin
 					Operations: []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update},
 					Rule:       admissionregistrationv1.Rule{APIGroups: []string{"diki.gardener.cloud"}, APIVersions: []string{"v1alpha1"}, Resources: []string{"compliancescans"}},
 				}},
-				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/compliancescan", constants.DikiOperatorServiceName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
+				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/compliancescan", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
 				FailurePolicy:  &failurePolicy,
 				MatchPolicy:    &matchPolicy,
 				SideEffects:    &sideEffects,
@@ -587,7 +584,7 @@ func expectedValidatingWebhookConfiguration() *admissionregistrationv1.Validatin
 					Operations: []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update},
 					Rule:       admissionregistrationv1.Rule{APIGroups: []string{"diki.gardener.cloud"}, APIVersions: []string{"v1alpha1"}, Resources: []string{"scheduledcompliancescans"}},
 				}},
-				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/scheduledcompliancescan/validate", constants.DikiOperatorServiceName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
+				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/scheduledcompliancescan/validate", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
 				FailurePolicy:  &failurePolicy,
 				MatchPolicy:    &matchPolicy,
 				SideEffects:    &sideEffects,
@@ -603,7 +600,7 @@ func expectedMutatingWebhookConfiguration() *admissionregistrationv1.MutatingWeb
 	sideEffects := admissionregistrationv1.SideEffectClassNone
 
 	return &admissionregistrationv1.MutatingWebhookConfiguration{
-		ObjectMeta: metav1.ObjectMeta{Name: "gardener-extension-diki", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorServiceName}},
+		ObjectMeta: metav1.ObjectMeta{Name: "gardener-extension-diki", Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		Webhooks: []admissionregistrationv1.MutatingWebhook{
 			{
 				Name:                    "scheduledcompliancescans.diki.gardener.cloud",
@@ -612,7 +609,7 @@ func expectedMutatingWebhookConfiguration() *admissionregistrationv1.MutatingWeb
 					Operations: []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update},
 					Rule:       admissionregistrationv1.Rule{APIGroups: []string{"diki.gardener.cloud"}, APIVersions: []string{"v1alpha1"}, Resources: []string{"scheduledcompliancescans"}},
 				}},
-				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/scheduledcompliancescan/mutate", constants.DikiOperatorServiceName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
+				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/scheduledcompliancescan/mutate", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
 				FailurePolicy:  &failurePolicy,
 				MatchPolicy:    &matchPolicy,
 				SideEffects:    &sideEffects,

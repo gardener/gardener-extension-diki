@@ -33,7 +33,7 @@ import (
 func (c *Component) serviceAccount() *corev1.ServiceAccount {
 	return &corev1.ServiceAccount{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: c.values.Namespace,
 			Labels:    c.labels(),
 		},
@@ -49,7 +49,7 @@ func (c *Component) configMap() (*corev1.ConfigMap, error) {
 
 	return &corev1.ConfigMap{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: c.values.Namespace,
 			Labels:    c.labels(),
 		},
@@ -128,7 +128,7 @@ func (c *Component) operatorConfig() (string, error) {
 func (c *Component) service() *corev1.Service {
 	return &corev1.Service{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: c.values.Namespace,
 			Labels:    c.labels(),
 		},
@@ -155,7 +155,7 @@ func (c *Component) service() *corev1.Service {
 
 func (c *Component) serviceMonitor() *monitoringv1.ServiceMonitor {
 	return &monitoringv1.ServiceMonitor{
-		ObjectMeta: monitoringutils.ConfigObjectMeta(constants.DikiOperatorServiceName, c.values.Namespace, "shoot"),
+		ObjectMeta: monitoringutils.ConfigObjectMeta(constants.DikiOperatorName, c.values.Namespace, "shoot"),
 		Spec: monitoringv1.ServiceMonitorSpec{
 			Selector: metav1.LabelSelector{MatchLabels: c.labels()},
 			Endpoints: []monitoringv1.Endpoint{{
@@ -168,7 +168,7 @@ func (c *Component) serviceMonitor() *monitoringv1.ServiceMonitor {
 func (c *Component) deployment() *appsv1.Deployment {
 	return &appsv1.Deployment{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: c.values.Namespace,
 			Labels:    utils.MergeStringMaps(c.labels(), c.haLabels()),
 		},
@@ -182,7 +182,7 @@ func (c *Component) deployment() *appsv1.Deployment {
 				},
 				Spec: corev1.PodSpec{
 					PriorityClassName:  v1beta1constants.PriorityClassNameShootControlPlane300,
-					ServiceAccountName: constants.DikiOperatorServiceName,
+					ServiceAccountName: constants.DikiOperatorName,
 					SecurityContext: &corev1.PodSecurityContext{
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
@@ -194,7 +194,7 @@ func (c *Component) deployment() *appsv1.Deployment {
 					},
 					AutomountServiceAccountToken: ptr.To(true),
 					Containers: []corev1.Container{{
-						Name:            constants.DikiOperatorServiceName,
+						Name:            constants.DikiOperatorName,
 						Image:           c.values.Image,
 						ImagePullPolicy: corev1.PullIfNotPresent,
 						Args: []string{
@@ -270,7 +270,7 @@ func (c *Component) deployment() *appsv1.Deployment {
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{
-										Name: constants.DikiOperatorServiceName,
+										Name: constants.DikiOperatorName,
 									},
 									DefaultMode: ptr.To[int32](0440),
 								},
@@ -295,7 +295,7 @@ func (c *Component) deployment() *appsv1.Deployment {
 func (c *Component) role() *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: c.values.Namespace,
 			Labels:    c.labels(),
 		},
@@ -317,19 +317,19 @@ func (c *Component) role() *rbacv1.Role {
 func (c *Component) roleBinding() *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName,
+			Name:      constants.DikiOperatorName,
 			Namespace: c.values.Namespace,
 			Labels:    c.labels(),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     "Role",
-			Name:     constants.DikiOperatorServiceName,
+			Name:     constants.DikiOperatorName,
 		},
 		Subjects: []rbacv1.Subject{
 			{
 				Kind:      rbacv1.ServiceAccountKind,
-				Name:      constants.DikiOperatorServiceName,
+				Name:      constants.DikiOperatorName,
 				Namespace: c.values.Namespace,
 			},
 		},
@@ -350,7 +350,7 @@ func (c *Component) runServiceAccount() *corev1.ServiceAccount {
 func (c *Component) verticalPodAutoscaler() *vpaautoscalingv1.VerticalPodAutoscaler {
 	return &vpaautoscalingv1.VerticalPodAutoscaler{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName + "-vpa",
+			Name:      constants.DikiOperatorName,
 			Namespace: c.values.Namespace,
 			Labels:    c.labels(),
 		},
@@ -358,7 +358,7 @@ func (c *Component) verticalPodAutoscaler() *vpaautoscalingv1.VerticalPodAutosca
 			TargetRef: &autoscalingv1.CrossVersionObjectReference{
 				APIVersion: appsv1.SchemeGroupVersion.String(),
 				Kind:       "Deployment",
-				Name:       constants.DikiOperatorServiceName,
+				Name:       constants.DikiOperatorName,
 			},
 			UpdatePolicy: &vpaautoscalingv1.PodUpdatePolicy{
 				UpdateMode: ptr.To(vpaautoscalingv1.UpdateModeInPlaceOrRecreate),
@@ -366,7 +366,7 @@ func (c *Component) verticalPodAutoscaler() *vpaautoscalingv1.VerticalPodAutosca
 			ResourcePolicy: &vpaautoscalingv1.PodResourcePolicy{
 				ContainerPolicies: []vpaautoscalingv1.ContainerResourcePolicy{
 					{
-						ContainerName:    constants.DikiOperatorServiceName,
+						ContainerName:    constants.DikiOperatorName,
 						ControlledValues: ptr.To(vpaautoscalingv1.ContainerControlledValuesRequestsOnly),
 						MinAllowed: corev1.ResourceList{
 							corev1.ResourceMemory: resource.MustParse("32Mi"),
@@ -384,7 +384,7 @@ func (c *Component) verticalPodAutoscaler() *vpaautoscalingv1.VerticalPodAutosca
 
 func (c *Component) podLabels() map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name":                              constants.DikiOperatorServiceName,
+		"app.kubernetes.io/name":                              constants.DikiOperatorName,
 		v1beta1constants.LabelNetworkPolicyToDNS:              v1beta1constants.LabelNetworkPolicyAllowed,
 		v1beta1constants.LabelNetworkPolicyToRuntimeAPIServer: v1beta1constants.LabelNetworkPolicyAllowed,
 		gutil.NetworkPolicyLabel(v1beta1constants.DeploymentNameKubeAPIServer, kubeapiserverconstants.Port): v1beta1constants.LabelNetworkPolicyAllowed,

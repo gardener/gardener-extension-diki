@@ -184,7 +184,7 @@ func (c *Component) shootResources() (map[string][]byte, error) {
 
 func (c *Component) labels() map[string]string {
 	return map[string]string{
-		"app.kubernetes.io/name": constants.DikiOperatorServiceName,
+		"app.kubernetes.io/name": constants.DikiOperatorName,
 	}
 }
 

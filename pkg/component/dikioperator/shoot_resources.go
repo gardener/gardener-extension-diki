@@ -228,7 +228,7 @@ func (c *Component) exporterClusterRoleBinding() *rbacv1.ClusterRoleBinding {
 func (c *Component) roleLeaderElection() *rbacv1.Role {
 	return &rbacv1.Role{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName + "-leader-election",
+			Name:      constants.DikiOperatorName + "-leader-election",
 			Namespace: metav1.NamespaceSystem,
 			Labels:    c.labels(),
 		},
@@ -250,14 +250,14 @@ func (c *Component) roleLeaderElection() *rbacv1.Role {
 func (c *Component) roleBindingLeaderElection() *rbacv1.RoleBinding {
 	return &rbacv1.RoleBinding{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      constants.DikiOperatorServiceName + "-leader-election",
+			Name:      constants.DikiOperatorName + "-leader-election",
 			Namespace: metav1.NamespaceSystem,
 			Labels:    c.labels(),
 		},
 		RoleRef: rbacv1.RoleRef{
 			APIGroup: rbacv1.GroupName,
 			Kind:     "Role",
-			Name:     constants.DikiOperatorServiceName + "-leader-election",
+			Name:     constants.DikiOperatorName + "-leader-election",
 		},
 		Subjects: []rbacv1.Subject{
 			{
@@ -275,7 +275,7 @@ func (c *Component) validatingWebhookConfiguration() *admissionregistrationv1.Va
 		matchPolicy    = admissionregistrationv1.Equivalent
 		sideEffects    = admissionregistrationv1.SideEffectClassNone
 		timeoutSeconds = ptr.To[int32](10)
-		webhookURL     = fmt.Sprintf("https://%s.%s.svc", constants.DikiOperatorServiceName, c.values.Namespace)
+		webhookURL     = fmt.Sprintf("https://%s.%s.svc", constants.DikiOperatorName, c.values.Namespace)
 	)
 
 	return &admissionregistrationv1.ValidatingWebhookConfiguration{
@@ -334,7 +334,7 @@ func (c *Component) mutatingWebhookConfiguration() *admissionregistrationv1.Muta
 		matchPolicy    = admissionregistrationv1.Equivalent
 		sideEffects    = admissionregistrationv1.SideEffectClassNone
 		timeoutSeconds = ptr.To[int32](10)
-		webhookURL     = fmt.Sprintf("https://%s.%s.svc", constants.DikiOperatorServiceName, c.values.Namespace)
+		webhookURL     = fmt.Sprintf("https://%s.%s.svc", constants.DikiOperatorName, c.values.Namespace)
 	)
 
 	return &admissionregistrationv1.MutatingWebhookConfiguration{

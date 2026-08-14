@@ -34,8 +34,8 @@ func ConfigsFor(namespace string) []extensionssecretsmanager.SecretConfigWithOpt
 		{
 			Config: &secretsutils.CertificateSecretConfig{
 				Name:                        constants.WebhookTLSSecretName,
-				CommonName:                  constants.DikiOperatorServiceName,
-				DNSNames:                    kubernetesutils.DNSNamesForService(constants.DikiOperatorServiceName, namespace),
+				CommonName:                  constants.DikiOperatorName,
+				DNSNames:                    kubernetesutils.DNSNamesForService(constants.DikiOperatorName, namespace),
 				CertType:                    secretsutils.ServerCert,
 				SkipPublishingCACertificate: true,
 			},
