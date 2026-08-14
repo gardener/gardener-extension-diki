@@ -69,12 +69,37 @@ func (c *Component) Deploy(ctx context.Context) error {
 	return nil
 }
 
-// Destroy removes the diki-operator seed and shoot resources.
-func (c *Component) Destroy(ctx context.Context) error {
+// Destroy removes the diki-operator shoot and seed resources.
+// Shoot resources are deleted and awaited before the seed resources so that
+// the operator can handle finalizer-based cleanup before it is removed.
+// When forceDelete is true, waiting for resource deletion is skipped because
+// ManagedResources are finalized by gardenlet in a later step.
+func (c *Component) Destroy(ctx context.Context, forceDelete bool) error {
+	if err := managedresources.DeleteForShoot(ctx, c.client, c.values.Namespace, constants.ManagedResourceNameShoot); err != nil {
+		return err
+	}
+
+	if !forceDelete {
+		timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+
+		if err := managedresources.WaitUntilDeleted(timeoutCtx, c.client, c.values.Namespace, constants.ManagedResourceNameShoot); err != nil {
+			return err
+		}
+	}
+
 	if err := managedresources.DeleteForSeed(ctx, c.client, c.values.Namespace, constants.ManagedResourceNameSeed); err != nil {
 		return err
 	}
-	return managedresources.DeleteForShoot(ctx, c.client, c.values.Namespace, constants.ManagedResourceNameShoot)
+
+	if !forceDelete {
+		timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
+		defer cancel()
+
+		return managedresources.WaitUntilDeleted(timeoutCtx, c.client, c.values.Namespace, constants.ManagedResourceNameSeed)
+	}
+
+	return nil
 }
 
 // Wait waits until both ManagedResources are healthy.
@@ -87,26 +112,6 @@ func (c *Component) Wait(ctx context.Context) error {
 	}
 
 	return managedresources.WaitUntilHealthy(timeoutCtx, c.client, c.values.Namespace, constants.ManagedResourceNameShoot)
-}
-
-// WaitCleanup waits until both ManagedResources are deleted.
-func (c *Component) WaitCleanup(ctx context.Context) error {
-	timeoutCtx, cancel := context.WithTimeout(ctx, 2*time.Minute)
-	defer cancel()
-
-	if err := managedresources.WaitUntilDeleted(timeoutCtx, c.client, c.values.Namespace, constants.ManagedResourceNameSeed); err != nil {
-		return err
-	}
-
-	return managedresources.WaitUntilDeleted(timeoutCtx, c.client, c.values.Namespace, constants.ManagedResourceNameShoot)
-}
-
-// SetKeepObjects sets the keepObjects field on both ManagedResources.
-func (c *Component) SetKeepObjects(ctx context.Context, keepObjects bool) error {
-	if err := managedresources.SetKeepObjects(ctx, c.client, c.values.Namespace, constants.ManagedResourceNameSeed, keepObjects); err != nil {
-		return err
-	}
-	return managedresources.SetKeepObjects(ctx, c.client, c.values.Namespace, constants.ManagedResourceNameShoot, keepObjects)
 }
 
 func (c *Component) seedResources() (map[string][]byte, error) {

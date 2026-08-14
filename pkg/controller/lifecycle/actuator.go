@@ -144,14 +144,8 @@ func (a *actuator) delete(ctx context.Context, logger logr.Logger, ex *extension
 		}
 	}
 
-	if err := comp.Destroy(ctx); err != nil {
+	if err := comp.Destroy(ctx, forceDelete); err != nil {
 		return fmt.Errorf("failed to destroy diki-operator: %w", err)
-	}
-
-	if !forceDelete {
-		if err := comp.WaitCleanup(ctx); err != nil {
-			return err
-		}
 	}
 
 	if err := client.IgnoreNotFound(a.client.Delete(ctx, operatorShootAccessSecret.Secret)); err != nil {
