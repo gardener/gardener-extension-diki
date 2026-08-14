@@ -136,9 +136,6 @@ func (a *actuator) delete(ctx context.Context, logger logr.Logger, ex *extension
 	}
 
 	if skipSecretsManagerCleanup {
-		if err := managedresources.SetKeepObjects(ctx, a.client, namespace, constants.ManagedResourceNameSeed, true); err != nil {
-			return fmt.Errorf("failed to set keep objects on seed ManagedResource: %w", err)
-		}
 		if err := managedresources.SetKeepObjects(ctx, a.client, namespace, constants.ManagedResourceNameShoot, true); err != nil {
 			return fmt.Errorf("failed to set keep objects on shoot ManagedResource: %w", err)
 		}
