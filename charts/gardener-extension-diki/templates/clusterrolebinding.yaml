@@ -1,0 +1,17 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: gardener-extension-diki
+  labels:
+    app.kubernetes.io/name: gardener-extension-diki
+    helm.sh/chart: gardener-extension-diki
+    app.kubernetes.io/instance: {{ .Release.Name }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: gardener-extension-diki
+subjects:
+- kind: ServiceAccount
+  name: gardener-extension-diki
+  namespace: {{ .Release.Namespace }}

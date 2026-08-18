@@ -1,0 +1,238 @@
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.20.1
+  name: scheduledcompliancescans.diki.gardener.cloud
+spec:
+  group: diki.gardener.cloud
+  names:
+    kind: ScheduledComplianceScan
+    listKind: ScheduledComplianceScanList
+    plural: scheduledcompliancescans
+    shortNames:
+    - scscan
+    singular: scheduledcompliancescan
+  scope: Cluster
+  versions:
+  - additionalPrinterColumns:
+    - description: Cron schedule of the compliance scan
+      jsonPath: .spec.schedule
+      name: Schedule
+      type: string
+    - description: Name of the currently active ComplianceScan
+      jsonPath: .status.active.name
+      name: Active
+      type: string
+    - description: Last time a ComplianceScan was scheduled
+      jsonPath: .status.lastScheduleTime
+      name: Last Schedule
+      type: date
+    - description: Creation timestamp
+      jsonPath: .metadata.creationTimestamp
+      name: Age
+      type: date
+    name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: ScheduledComplianceScan describes a scheduled compliance scan.
+        properties:
+          apiVersion:
+            description: |-
+              APIVersion defines the versioned schema of this representation of an object.
+              Servers should convert recognized schemas to the latest internal value, and
+              may reject unrecognized values.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources
+            type: string
+          kind:
+            description: |-
+              Kind is a string value representing the REST resource this object represents.
+              Servers may infer this from the endpoint the client submits requests to.
+              Cannot be updated.
+              In CamelCase.
+              More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: Spec contains the specification of this scheduled compliance
+              scan.
+            properties:
+              failedScansHistoryLimit:
+                description: FailedScansHistoryLimit is the number of failed compliance
+                  scans to keep.
+                format: int32
+                type: integer
+              scanTemplate:
+                description: ScanTemplate is the template for the ComplianceScan that
+                  will be created on each scheduled scan.
+                properties:
+                  spec:
+                    description: Spec is the spec of the ComplianceScan that will
+                      be created.
+                    properties:
+                      outputs:
+                        description: Outputs describe the outputs of the compliance
+                          scan.
+                        items:
+                          description: ReportOutputRef describes a reference to a
+                            report output.
+                          properties:
+                            name:
+                              description: Name is the name of the report output.
+                              type: string
+                          required:
+                          - name
+                          type: object
+                        type: array
+                      rulesets:
+                        description: Rulesets describe the rulesets to be applied
+                          during the compliance scan.
+                        items:
+                          description: RulesetConfig describes the configuration of
+                            a ruleset.
+                          properties:
+                            id:
+                              description: ID is the identifier of the ruleset.
+                              type: string
+                            options:
+                              description: Options are options for a ruleset.
+                              properties:
+                                rules:
+                                  description: |-
+                                    Rules contains references to rule options.
+                                    Users can use these to configure the behaviour of specific rules.
+                                  properties:
+                                    configMapRef:
+                                      description: ConfigMapRef is a reference to
+                                        a ConfigMap containing options.
+                                      properties:
+                                        key:
+                                          description: Key is the key within the ConfigMap,
+                                            where the options are stored.
+                                          type: string
+                                        name:
+                                          description: Name is the name of the ConfigMap.
+                                          type: string
+                                        namespace:
+                                          description: Namespace is the namespace
+                                            of the ConfigMap.
+                                          type: string
+                                      required:
+                                      - name
+                                      - namespace
+                                      type: object
+                                  type: object
+                                ruleset:
+                                  description: Ruleset contains global options for
+                                    the ruleset.
+                                  properties:
+                                    configMapRef:
+                                      description: ConfigMapRef is a reference to
+                                        a ConfigMap containing options.
+                                      properties:
+                                        key:
+                                          description: Key is the key within the ConfigMap,
+                                            where the options are stored.
+                                          type: string
+                                        name:
+                                          description: Name is the name of the ConfigMap.
+                                          type: string
+                                        namespace:
+                                          description: Namespace is the namespace
+                                            of the ConfigMap.
+                                          type: string
+                                      required:
+                                      - name
+                                      - namespace
+                                      type: object
+                                  type: object
+                              type: object
+                            version:
+                              description: Version is the version of the ruleset.
+                              type: string
+                          required:
+                          - id
+                          - version
+                          type: object
+                        type: array
+                    type: object
+                required:
+                - spec
+                type: object
+              schedule:
+                description: Schedule is a cron expression defining when the compliance
+                  scan should run.
+                type: string
+              successfulScansHistoryLimit:
+                description: SuccessfulScansHistoryLimit is the number of completed
+                  compliance scans to keep.
+                format: int32
+                type: integer
+            required:
+            - scanTemplate
+            type: object
+          status:
+            description: Status contains the status of this scheduled compliance scan.
+            properties:
+              active:
+                description: Active is a reference to the currently active ComplianceScan,
+                  if any.
+                properties:
+                  apiVersion:
+                    description: API version of the referent.
+                    type: string
+                  fieldPath:
+                    description: |-
+                      If referring to a piece of an object instead of an entire object, this string
+                      should contain a valid JSON/Go field access statement, such as desiredState.manifest.containers[2].
+                      For example, if the object reference is to a container within a pod, this would take on a value like:
+                      "spec.containers{name}" (where "name" refers to the name of the container that triggered
+                      the event) or if no container name is specified "spec.containers[2]" (container with
+                      index 2 in this pod). This syntax is chosen only to have some well-defined way of
+                      referencing a part of an object.
+                    type: string
+                  kind:
+                    description: |-
+                      Kind of the referent.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds
+                    type: string
+                  name:
+                    description: |-
+                      Name of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  namespace:
+                    description: |-
+                      Namespace of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/namespaces/
+                    type: string
+                  resourceVersion:
+                    description: |-
+                      Specific resourceVersion to which this reference is made, if any.
+                      More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#concurrency-control-and-consistency
+                    type: string
+                  uid:
+                    description: |-
+                      UID of the referent.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#uids
+                    type: string
+                type: object
+                x-kubernetes-map-type: atomic
+              lastCompletionTime:
+                description: LastCompletionTime is the last time a scheduled ComplianceScan
+                  completed.
+                format: date-time
+                type: string
+              lastScheduleTime:
+                description: LastScheduleTime is the last time a ComplianceScan was
+                  scheduled.
+                format: date-time
+                type: string
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
