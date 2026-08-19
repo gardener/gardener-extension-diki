@@ -72,6 +72,7 @@ check: $(GOIMPORTS) $(GOLANGCI_LINT) $(HELM)
 .PHONY: generate
 generate: $(CONTROLLER_GEN) $(EXTENSION_GEN) $(HELM) $(YQ)
 	@REPO_ROOT=$(REPO_ROOT) GARDENER_HACK_DIR=$(GARDENER_HACK_DIR) bash $(GARDENER_HACK_DIR)/generate-sequential.sh ./charts/... ./cmd/... ./example/... ./pkg/...
+	@bash $(HACK_DIR)/update-crds.sh
 	$(MAKE) format
 
 .PHONY: format

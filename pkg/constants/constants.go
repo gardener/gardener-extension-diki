@@ -21,9 +21,9 @@ const (
 	// ManagedResourceNameShoot is the name of the shoot ManagedResource.
 	ManagedResourceNameShoot = "extension-diki-shoot"
 
-	// DikiOperatorServiceName is the application name for the diki-operator.
-	DikiOperatorServiceName = "diki-operator"
+	// DikiOperatorName is the application name for the diki-operator.
+	DikiOperatorName = "diki-operator"
 
 	// WebhookTLSSecretName is the name of the TLS secret used by the diki-operator webhook server.
-	WebhookTLSSecretName = DikiOperatorServiceName + "-tls"
+	WebhookTLSSecretName = DikiOperatorName + "-tls"
 )
