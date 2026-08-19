@@ -1,0 +1,42 @@
+image:
+  repository: europe-docker.pkg.dev/gardener-project/public/gardener/extensions/diki
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# settings for metrics, e.g. scraping by seed-prometheus
+metrics:
+  enableScraping: true
+  # default metrics endpoint in controller-runtime
+  port: 8080
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+
+vpa:
+  enabled: true
+  resourcePolicy:
+    minAllowed:
+      memory: 32Mi
+    controlledValues: RequestsOnly
+  updatePolicy:
+    updateMode: "InPlaceOrRecreate"
+
+healthPort: 8081
+
+controllers:
+  extension:
+    concurrentSyncs: 5
+  heartbeat:
+    renewIntervalSeconds: 30
+  ignoreOperationAnnotation: false
+
+disableControllers: []
+
+imageVectorOverwrite: {}
+
+gardener:
+  version: ""
