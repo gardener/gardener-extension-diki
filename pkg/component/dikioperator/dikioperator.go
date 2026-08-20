@@ -141,7 +141,7 @@ func (c *Component) seedResources() (map[string][]byte, error) {
 		return nil, err
 	}
 
-	return registry.AddAllAndSerialize(
+	resources := []client.Object{
 		c.serviceAccount(),
 		c.runServiceAccount(),
 		configMap,
@@ -151,7 +151,13 @@ func (c *Component) seedResources() (map[string][]byte, error) {
 		c.verticalPodAutoscaler(),
 		c.role(),
 		c.roleBinding(),
-	)
+	}
+
+	if len(c.values.BaseDikiOptionsData) != 0 {
+		resources = append(resources, c.baseOptionsConfigMap())
+	}
+
+	return registry.AddAllAndSerialize(resources...)
 }
 
 func (c *Component) shootResources() (map[string][]byte, error) {

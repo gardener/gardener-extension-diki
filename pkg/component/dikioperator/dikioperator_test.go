@@ -16,6 +16,7 @@ import (
 	monitoringutils "github.com/gardener/gardener/pkg/component/observability/monitoring/utils"
 	"github.com/gardener/gardener/pkg/utils"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
+	"github.com/gardener/gardener/pkg/utils/managedresources"
 	"github.com/gardener/gardener/pkg/utils/retry"
 	retryfake "github.com/gardener/gardener/pkg/utils/retry/fake"
 	"github.com/gardener/gardener/pkg/utils/test"
@@ -157,6 +158,66 @@ var _ = Describe("Component", func() {
 					expectedRoleBinding(),
 				))
 			})
+
+			It("should deploy base options ConfigMap when BaseDikiOptionsData is set", func() {
+				values.BaseDikiOptionsData = "providers:\n- id: managedk8s\n  name: test\n"
+				comp = dikioperator.New(fakeClient, values)
+
+				Expect(comp.Deploy(ctx)).To(Succeed())
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(managedResourceSeed), managedResourceSeed)).To(Succeed())
+
+				Expect(managedResourceSeed).To(consistOf(
+					expectedServiceAccount(),
+					expectedRunServiceAccount(),
+					expectedConfigMap(),
+					expectedDeployment(1),
+					expectedService(),
+					expectedServiceMonitor(),
+					expectedVPA(),
+					expectedRole(),
+					expectedRoleBinding(),
+					expectedBaseOptionsConfigMap(),
+				))
+			})
+
+			It("should have correct operator config without base options", func() {
+				Expect(comp.Deploy(ctx)).To(Succeed())
+
+				objects, err := managedresources.GetObjects(ctx, fakeClient, namespace, constants.ManagedResourceNameSeed)
+				Expect(err).NotTo(HaveOccurred())
+
+				var operatorConfigMap *corev1.ConfigMap
+				for _, obj := range objects {
+					cm, ok := obj.(*corev1.ConfigMap)
+					if ok && cm.Name == constants.DikiOperatorName {
+						operatorConfigMap = cm
+						break
+					}
+				}
+				Expect(operatorConfigMap).NotTo(BeNil())
+				Expect(operatorConfigMap.Data).To(HaveKeyWithValue("config.yaml", expectedOperatorConfig(false)))
+			})
+
+			It("should have correct operator config with base options", func() {
+				values.BaseDikiOptionsData = "providers:\n- id: managedk8s\n  name: test\n"
+				comp = dikioperator.New(fakeClient, values)
+
+				Expect(comp.Deploy(ctx)).To(Succeed())
+
+				objects, err := managedresources.GetObjects(ctx, fakeClient, namespace, constants.ManagedResourceNameSeed)
+				Expect(err).NotTo(HaveOccurred())
+
+				var operatorConfigMap *corev1.ConfigMap
+				for _, obj := range objects {
+					cm, ok := obj.(*corev1.ConfigMap)
+					if ok && cm.Name == constants.DikiOperatorName {
+						operatorConfigMap = cm
+						break
+					}
+				}
+				Expect(operatorConfigMap).NotTo(BeNil())
+				Expect(operatorConfigMap.Data).To(HaveKeyWithValue("config.yaml", expectedOperatorConfig(true)))
+			})
 		})
 
 		Context("shoot resources", func() {
@@ -260,6 +321,55 @@ func expectedConfigMap() *corev1.ConfigMap {
 			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
 	}
+}
+
+func expectedOperatorConfig(withBaseOptions bool) string {
+	baseOptionsBlock := ""
+	if withBaseOptions {
+		baseOptionsBlock = `        baseOptions:
+            configMapRef:
+                key: config.yaml
+                name: diki-base-options
+`
+	}
+	return fmt.Sprintf(`apiVersion: config.diki.gardener.cloud/v1alpha1
+controllers:
+    complianceScan:
+%s        dikiRunner:
+            namespace: shoot--foo--bar
+            targetKubeconfig:
+                mountPath: /var/run/secrets/gardener.cloud/shoot/generic-kubeconfig
+                secretRef:
+                    key: kubeconfig
+                    name: generic-token-kubeconfig
+                tokenSecretRef:
+                    key: token
+                    name: shoot-access-diki-runner
+kind: DikiOperatorConfiguration
+leaderElection:
+    leaderElect: true
+    leaseDuration: 0s
+    renewDeadline: 0s
+    resourceLock: leases
+    resourceName: diki-operator-leader-election
+    resourceNamespace: kube-system
+    retryPeriod: 0s
+log:
+    format: json
+    level: info
+server:
+    healthProbes:
+        bindAddress: ""
+        port: 8081
+    metrics:
+        bindAddress: ""
+        port: 8080
+    webhooks:
+        bindAddress: ""
+        port: 10443
+        tls:
+            serverCertDir: /etc/diki-operator/webhooks/tls
+`, baseOptionsBlock)
 }
 
 func expectedDeployment(replicas int32) *appsv1.Deployment {
@@ -436,7 +546,7 @@ func expectedRole() *rbacv1.Role {
 			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
 		Rules: []rbacv1.PolicyRule{
-			{APIGroups: []string{""}, Resources: []string{"configmaps"}, Verbs: []string{"create"}},
+			{APIGroups: []string{""}, Resources: []string{"configmaps"}, Verbs: []string{"get", "create"}},
 			{APIGroups: []string{"batch"}, Resources: []string{"jobs"}, Verbs: []string{"get", "list", "watch", "create", "update", "patch", "delete"}},
 		},
 	}
@@ -452,6 +562,19 @@ func expectedRoleBinding() *rbacv1.RoleBinding {
 		RoleRef: rbacv1.RoleRef{APIGroup: rbacv1.GroupName, Kind: "Role", Name: constants.DikiOperatorName},
 		Subjects: []rbacv1.Subject{
 			{Kind: rbacv1.ServiceAccountKind, Name: constants.DikiOperatorName, Namespace: "shoot--foo--bar"},
+		},
+	}
+}
+
+func expectedBaseOptionsConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "diki-base-options",
+			Namespace: "shoot--foo--bar",
+			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
+		},
+		Data: map[string]string{
+			"config.yaml": "providers:\n- id: managedk8s\n  name: test\n",
 		},
 	}
 }
