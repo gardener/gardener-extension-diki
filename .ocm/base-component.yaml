@@ -1,0 +1,23 @@
+# SPDX-FileCopyrightText: SAP SE or an SAP affiliate company and Gardener contributors
+#
+# SPDX-License-Identifier: Apache-2.0
+
+name: github.com/gardener/gardener-extension-diki
+
+labels:
+  - name: cloud.gardener.cnudie/responsibles
+    value:
+    - type: githubUser
+      username: AleksandarSavchev
+    - type: githubUser
+      username: georgibaltiev
+    - type: githubUser
+      username: dimityrmirchev
+
+main-source:
+  labels:
+    - name: cloud.gardener.cnudie/dso/scanning-hints/source_analysis/v1
+      value:
+        policy: skip
+        comment: |
+          we use gosec for sast scanning. See attached log.

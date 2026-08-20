@@ -1,0 +1,16 @@
+name: Prepare Release
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-go@v6
+      with:
+        go-version: stable
+    - name: make-generate
+      shell: bash
+      run: |
+        set -o errexit
+        set -o nounset
+        set -o pipefail
+
+        make generate
