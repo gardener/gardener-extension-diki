@@ -19,6 +19,7 @@ const ExtensionName = "extension-diki"
 // Options holds configuration passed to the diki extension controller.
 type Options struct {
 	generalOptions     *extensionscmdcontroller.GeneralOptions
+	dikiOptions        *dikicmd.DikiOptions
 	restOptions        *extensionscmdcontroller.RESTOptions
 	managerOptions     *extensionscmdcontroller.ManagerOptions
 	controllerOptions  *extensionscmdcontroller.ControllerOptions
@@ -32,6 +33,7 @@ type Options struct {
 func NewOptions() *Options {
 	options := &Options{
 		generalOptions: &extensionscmdcontroller.GeneralOptions{},
+		dikiOptions:    &dikicmd.DikiOptions{},
 		restOptions:    &extensionscmdcontroller.RESTOptions{},
 		managerOptions: &extensionscmdcontroller.ManagerOptions{
 			LeaderElection:          true,
@@ -56,6 +58,7 @@ func NewOptions() *Options {
 
 	options.optionAggregator = extensionscmdcontroller.NewOptionAggregator(
 		options.generalOptions,
+		options.dikiOptions,
 		options.restOptions,
 		options.managerOptions,
 		options.controllerOptions,

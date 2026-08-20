@@ -85,6 +85,7 @@ func (o *Options) run(ctx context.Context) error {
 		return fmt.Errorf("could not update manager scheme: %w", err)
 	}
 
+	o.dikiOptions.Completed().Apply(&lifecycle.DefaultAddOptions.Config)
 	o.controllerOptions.Completed().Apply(&lifecycle.DefaultAddOptions.ControllerOptions)
 	o.reconcileOptions.Completed().Apply(&lifecycle.DefaultAddOptions.IgnoreOperationAnnotation)
 	o.heartbeatOptions.Completed().Apply(&extensionsheartbeatcontroller.DefaultAddOptions)
