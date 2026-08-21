@@ -15,6 +15,9 @@ const (
 	portHealth  int32 = 8081
 	portMetrics int32 = 8080
 	portWebhook int32 = 10443
+
+	baseOptionsConfigMapName = "diki-base-options"
+	baseOptionsConfigMapKey  = "config.yaml"
 )
 
 // Values contains the configuration values for the diki-operator component.
@@ -41,4 +44,8 @@ type Values struct {
 	ServerTLSSecretName string
 	// WebhookCABundle is the CA bundle used to verify the webhook server certificate.
 	WebhookCABundle []byte
+	// BaseDikiOptionsData is the raw YAML content for base diki options.
+	// When non-empty, a ConfigMap is created with this content and referenced
+	// in the DikiOperatorConfiguration.
+	BaseDikiOptionsData string
 }

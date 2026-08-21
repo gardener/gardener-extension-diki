@@ -59,6 +59,19 @@ func (c *Component) configMap() (*corev1.ConfigMap, error) {
 	}, nil
 }
 
+func (c *Component) baseOptionsConfigMap() *corev1.ConfigMap {
+	return &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      baseOptionsConfigMapName,
+			Namespace: c.values.Namespace,
+			Labels:    c.labels(),
+		},
+		Data: map[string]string{
+			baseOptionsConfigMapKey: c.values.BaseDikiOptionsData,
+		},
+	}
+}
+
 func (c *Component) operatorConfig() (string, error) {
 	cfg := &dikiconfigv1alpha1.DikiOperatorConfiguration{
 		TypeMeta: metav1.TypeMeta{
@@ -103,6 +116,15 @@ func (c *Component) operatorConfig() (string, error) {
 				},
 			},
 		},
+	}
+
+	if len(c.values.BaseDikiOptionsData) != 0 {
+		cfg.Controllers.ComplianceScan.BaseOptions = &dikiconfigv1alpha1.BaseOptionsConfig{
+			ConfigMapRef: dikiconfigv1alpha1.ConfigMapRef{
+				Name: baseOptionsConfigMapName,
+				Key:  ptr.To(baseOptionsConfigMapKey),
+			},
+		}
 	}
 
 	// Marshal to JSON first because go.yaml.in/yaml/v4 ignores json: struct tags
@@ -303,7 +325,7 @@ func (c *Component) role() *rbacv1.Role {
 			{
 				APIGroups: []string{""},
 				Resources: []string{"configmaps"},
-				Verbs:     []string{"create"},
+				Verbs:     []string{"get", "create"},
 			},
 			{
 				APIGroups: []string{"batch"},

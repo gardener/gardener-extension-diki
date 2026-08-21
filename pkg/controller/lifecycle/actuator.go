@@ -22,6 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-diki/imagevector"
+	"github.com/gardener/gardener-extension-diki/pkg/apis/config"
 	"github.com/gardener/gardener-extension-diki/pkg/component/dikioperator"
 	"github.com/gardener/gardener-extension-diki/pkg/constants"
 	"github.com/gardener/gardener-extension-diki/pkg/secrets"
@@ -33,14 +34,16 @@ const (
 )
 
 // NewActuator returns an actuator responsible for Extension resources.
-func NewActuator(c client.Client) extension.Actuator {
+func NewActuator(c client.Client, config config.Configuration) extension.Actuator {
 	return &actuator{
 		client: c,
+		config: config,
 	}
 }
 
 type actuator struct {
 	client client.Client
+	config config.Configuration
 }
 
 // Reconcile the Extension resource.
@@ -175,6 +178,11 @@ func (a *actuator) newComponent(namespace string, cluster *extensions.Cluster, r
 		return nil, fmt.Errorf("failed to find image %s: %w", constants.ImageNameDikiOperator, err)
 	}
 
+	var baseDikiOptionsData string
+	if a.config.BaseDikiOptions != nil && len(a.config.BaseDikiOptions.Data) != 0 {
+		baseDikiOptionsData = a.config.BaseDikiOptions.Data
+	}
+
 	return dikioperator.New(a.client, dikioperator.Values{
 		Image:                                 image.String(),
 		Replicas:                              replicas,
@@ -186,5 +194,6 @@ func (a *actuator) newComponent(namespace string, cluster *extensions.Cluster, r
 		RunnerShootAccessServiceAccountName:   runnerShootAccessSecret.ServiceAccountName,
 		ServerTLSSecretName:                   serverTLSSecretName,
 		WebhookCABundle:                       webhookCABundle,
+		BaseDikiOptionsData:                   baseDikiOptionsData,
 	}), nil
 }

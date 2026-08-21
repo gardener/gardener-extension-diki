@@ -38,5 +38,13 @@ disableControllers: []
 
 imageVectorOverwrite: {}
 
+# dikiServiceConfig:
+#   baseDikiOptions:
+#     data: |
+#       providers:
+#       - id: managedk8s
+#         name: Managed Kubernetes
+#         ...
+
 gardener:
   version: ""

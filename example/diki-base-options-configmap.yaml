@@ -1,0 +1,205 @@
+# Example: Base Diki Options ConfigMap
+#
+# This ConfigMap should be created in the garden namespace (runtime cluster).
+# It contains base diki configuration options (e.g. managed Kubernetes exceptions,
+# accepted pods, skipped rules) that will be applied to all ComplianceScans.
+#
+# Reference this ConfigMap in the Extension resource's spec.deployment.resources
+# and inject its data into the extension chart values.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: diki-base-options
+  namespace: garden
+  labels:
+    gardener.cloud/role: resource-reference
+data:
+  config: |
+    providers:
+    - id: managedk8s
+      name: "Managed Kubernetes"
+      rulesets:
+      - id: disa-kubernetes-stig
+        name: DISA Kubernetes Security Technical Implementation Guide
+        version: v2r6
+        ruleOptions:
+        - ruleID: "242393"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242394"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242396"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242404"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242406"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242407"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242414"
+          args:
+            acceptedPods:
+            - labelSelector:
+                matchLabels:
+                  k8s-app: node-local-dns
+              namespaceLabelSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: kube-system
+              justification: "Node local dns requires port 53 in order to operate properly."
+              ports:
+              - 53
+        - ruleID: "242417"
+          args:
+            acceptedPods:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              namespaceLabelSelector:
+                matchLabels:
+                  kubernetes.io/metadata.name: kube-system
+              justification: "Pods managed by Gardener are not considered as user pods."
+        - ruleID: "242449"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242450"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242451"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242452"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242453"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242466"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+        - ruleID: "242467"
+          args:
+            nodeGroupByLabels:
+            - worker.gardener.cloud/pool
+      - id: security-hardened-k8s
+        name: Security Hardened Kubernetes Cluster
+        version: v0.1.0
+        ruleOptions:
+        - ruleID: "2000"
+          args:
+            acceptedNamespaces:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "Gardener managed namespaces are accepted to allow traffic by default."
+              acceptedTraffic:
+                ingress: true
+                egress: true
+        - ruleID: "2001"
+          args:
+            acceptedPods:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              namespaceLabelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "Gardener managed resources are accepted to allow privilege escalation."
+        - ruleID: "2003"
+          args:
+            acceptedPods:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              namespaceLabelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "Gardener managed resources are accepted to use a wider range of volume types."
+              volumeNames:
+              - "*"
+        - ruleID: "2004"
+          args:
+            acceptedServices:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              namespaceLabelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "Gardener managed services are accepted to be of type NodePort."
+        - ruleID: "2006"
+          args:
+            acceptedRoles:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              namespaceLabelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "Roles managed by Gardener are accepted to use wildcards in RBAC resources."
+            acceptedClusterRoles:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "ClusterRoles managed by Gardener are accepted to use wildcards in RBAC resources."
+            - labelSelector:
+                matchLabels:
+                  kubernetes.io/bootstrapping: rbac-defaults
+              justification: "Kubernetes default ClusterRoles are accepted to use wildcards in RBAC resources."
+        - ruleID: "2007"
+          args:
+            acceptedRoles:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              namespaceLabelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "Roles managed by Gardener are accepted to use wildcards in RBAC verbs."
+            acceptedClusterRoles:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "ClusterRoles managed by Gardener are accepted to use wildcards in RBAC verbs."
+            - labelSelector:
+                matchLabels:
+                  kubernetes.io/bootstrapping: rbac-defaults
+              justification: "Kubernetes default ClusterRoles are accepted to use wildcards in RBAC verbs."
+        - ruleID: "2008"
+          args:
+            acceptedPods:
+            - labelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              namespaceLabelSelector:
+                matchLabels:
+                  resources.gardener.cloud/managed-by: gardener
+              justification: "Gardener managed resources are accepted to use a wider range of volume types."
+              volumeNames:
+              - "*"
+    - id: garden
+      name: "Garden"
+      rulesets:
+      - id: security-hardened-shoot-cluster
+        name: Security Hardened Shoot Cluster
+        version: v0.2.1
+        ruleOptions:
+        - ruleID: "2007"
+          args:
+            minPodSecurityStandardsProfile: baseline 
