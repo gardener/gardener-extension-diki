@@ -20,10 +20,27 @@ jobs:
     permissions:
       id-token: write
 
+  get-go-version:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      version: ${{ steps.go-version.outputs.version }}
+    steps:
+      - uses: gardener/cc-utils/.github/actions/trusted-checkout@v1
+      - name: get-go-version
+        id: go-version
+        shell: bash
+        run: |
+          version=$(grep -oP 'FROM.*golang:\K[0-9]+\.[0-9]+\.[0-9]+' Dockerfile)
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
   sast-lint:
     uses: gardener/cc-utils/.github/workflows/sastlint-ocm.yaml@v1
     permissions:
       contents: read
+    needs:
+      - get-go-version
     with:
       setup-git-identity: true
       linter: gosec
@@ -36,7 +53,7 @@ jobs:
           # tests are run using prow for non-release-runs, so early-exit
           echo "dummy" > gosec-report.sarif
         fi
-      go-version: stable
+      go-version: ${{ needs.get-go-version.outputs.version }}
 
   oci-images:
     name: Build OCI-Images
