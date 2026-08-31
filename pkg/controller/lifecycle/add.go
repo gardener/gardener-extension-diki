@@ -11,6 +11,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
 
+	configapi "github.com/gardener/gardener-extension-diki/pkg/apis/config"
 	"github.com/gardener/gardener-extension-diki/pkg/constants"
 )
 
@@ -26,6 +27,8 @@ var DefaultAddOptions = AddOptions{}
 type AddOptions struct {
 	// ControllerOptions contains options for the controller.
 	ControllerOptions controller.Options
+	// Config contains the extension controller configuration.
+	Config configapi.Configuration
 	// IgnoreOperationAnnotation specifies whether to ignore the operation annotation or not.
 	IgnoreOperationAnnotation bool
 }
@@ -38,7 +41,7 @@ func AddToManager(ctx context.Context, mgr manager.Manager) error {
 // AddToManagerWithOptions adds a controller with the given Options to the given manager.
 func AddToManagerWithOptions(ctx context.Context, mgr manager.Manager, opts AddOptions) error {
 	return extension.Add(mgr, extension.AddArgs{
-		Actuator:          NewActuator(mgr.GetClient()),
+		Actuator:          NewActuator(mgr.GetClient(), opts.Config),
 		ControllerOptions: opts.ControllerOptions,
 		Name:              ControllerName,
 		FinalizerSuffix:   constants.FinalizerSuffix,
