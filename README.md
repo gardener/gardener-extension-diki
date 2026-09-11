@@ -21,7 +21,13 @@ The extension follows the standard Gardener extension contract as described in
 
 ## Documentation
 
-Please find the documentation in the [`/docs`](./docs) directory.
+**Usage:**
+
+- [Configuring the Diki Extension for Shoot Clusters](./docs/usage/configuration.md) - Learn about the use-case, how to enable it and configure it
+
+**Local Setup and Development:**
+
+- [Deploying Diki Extension Locally](./docs/development/getting-started-locally.md) - Learn how to set up a local development environment
 
 ## Feedback and Support
 
