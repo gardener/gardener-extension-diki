@@ -7,12 +7,15 @@ package lifecycle
 import (
 	"context"
 	"fmt"
+	"strings"
 
+	dikiv1alpha1 "github.com/gardener/diki-operator/pkg/apis/diki/v1alpha1"
 	"github.com/gardener/gardener/extensions/pkg/controller"
 	"github.com/gardener/gardener/extensions/pkg/controller/extension"
 	extensionssecretsmanager "github.com/gardener/gardener/extensions/pkg/util/secret/manager"
 	v1beta1helper "github.com/gardener/gardener/pkg/api/core/v1beta1/helper"
 	extensionsv1alpha1 "github.com/gardener/gardener/pkg/apis/extensions/v1alpha1"
+	"github.com/gardener/gardener/pkg/apis/utils/timewindow"
 	"github.com/gardener/gardener/pkg/extensions"
 	gutil "github.com/gardener/gardener/pkg/utils/gardener"
 	"github.com/gardener/gardener/pkg/utils/managedresources"
@@ -183,6 +186,11 @@ func (a *actuator) newComponent(namespace string, cluster *extensions.Cluster, r
 		baseDikiOptionsData = *a.config.BaseDikiConfig
 	}
 
+	defaultScheduledScanSpec, err := resolveDefaultScan(a.config.DefaultScheduledScan, cluster)
+	if err != nil {
+		return nil, fmt.Errorf("failed to resolve default scan: %w", err)
+	}
+
 	return dikioperator.New(a.client, dikioperator.Values{
 		Image:                                 image.String(),
 		Replicas:                              replicas,
@@ -195,5 +203,49 @@ func (a *actuator) newComponent(namespace string, cluster *extensions.Cluster, r
 		ServerTLSSecretName:                   serverTLSSecretName,
 		WebhookCABundle:                       webhookCABundle,
 		BaseDikiOptionsData:                   baseDikiOptionsData,
+		DefaultScheduledScanSpec:              defaultScheduledScanSpec,
 	}), nil
+}
+
+func resolveDefaultScan(cfg *config.DefaultScheduledScanSpec, cluster *extensions.Cluster) (*dikiv1alpha1.ScheduledComplianceScanSpec, error) {
+	if cfg == nil {
+		return nil, nil
+	}
+
+	schedule := cfg.Schedule
+	if m := cluster.Shoot.Spec.Maintenance; m != nil && m.TimeWindow != nil && len(m.TimeWindow.Begin) != 0 {
+		var (
+			mt  *timewindow.MaintenanceTime
+			err error
+		)
+		if mt, err = timewindow.ParseMaintenanceTime(m.TimeWindow.Begin); err != nil {
+			return nil, err
+		}
+		schedule = applyMaintenanceTime(schedule, mt.Hour(), mt.Minute())
+	}
+
+	spec := &dikiv1alpha1.ScheduledComplianceScanSpec{
+		Schedule:                    schedule,
+		SuccessfulScansHistoryLimit: cfg.SuccessfulScansHistoryLimit,
+		FailedScansHistoryLimit:     cfg.FailedScansHistoryLimit,
+	}
+	for _, r := range cfg.Rulesets {
+		spec.ScanTemplate.Spec.Rulesets = append(spec.ScanTemplate.Spec.Rulesets, dikiv1alpha1.RulesetConfig{
+			ID:      r.ID,
+			Version: r.Version,
+		})
+	}
+	return spec, nil
+}
+
+// applyMaintenanceTime replaces the minute and hour fields of a 5-field cron expression with the
+// provided values, preserving day-of-month, month, and day-of-week as configured by the operator.
+func applyMaintenanceTime(schedule string, hour, minute int) string {
+	fields := strings.Fields(schedule)
+	if len(fields) != 5 {
+		return schedule
+	}
+	fields[0] = fmt.Sprintf("%d", minute)
+	fields[1] = fmt.Sprintf("%d", hour)
+	return strings.Join(fields, " ")
 }
