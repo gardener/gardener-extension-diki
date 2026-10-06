@@ -44,6 +44,13 @@ imageVectorOverwrite: {}
 #     - id: managedk8s
 #       name: Managed Kubernetes
 #       ...
+#   defaultScheduledScan:
+#     schedule: "0 0 * * *"
+#     successfulScansHistoryLimit: 1
+#     failedScansHistoryLimit: 1
+#     rulesets:
+#     - id: disa-kubernetes-stig
+#       version: v2r6
 
 gardener:
   version: ""
