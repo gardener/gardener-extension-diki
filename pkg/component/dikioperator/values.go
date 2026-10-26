@@ -4,6 +4,10 @@
 
 package dikioperator
 
+import (
+	dikiv1alpha1 "github.com/gardener/diki-operator/pkg/apis/diki/v1alpha1"
+)
+
 const (
 	configVolumeName = "diki-operator-config"
 	configMountPath  = "/etc/diki-operator/config"
@@ -48,4 +52,7 @@ type Values struct {
 	// When non-empty, a ConfigMap is created with this content and referenced
 	// in the DikiOperatorConfiguration.
 	BaseDikiOptionsData string
+	// DefaultScheduledScanSpec is the spec for the default ScheduledComplianceScan CR to inject
+	// into the shoot. When nil, no default scan CR is injected.
+	DefaultScheduledScanSpec *dikiv1alpha1.ScheduledComplianceScanSpec
 }

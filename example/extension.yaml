@@ -15,5 +15,5 @@ spec:
     lifecycle:
       delete: BeforeKubeAPIServer
       migrate: AfterKubeAPIServer
-      reconcile: AfterKubeAPIServer
+      reconcile: AfterWorker
     type: diki

@@ -9,6 +9,6 @@ spec:
   - kind: Extension
     type: diki
     lifecycle:
-      reconcile: AfterKubeAPIServer
+      reconcile: AfterWorker
       delete: BeforeKubeAPIServer
       migrate: AfterKubeAPIServer
