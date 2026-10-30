@@ -917,8 +917,8 @@ k8s.io/pod-security-admission v0.36.3/go.mod h1:wYrV4tipwzgwUOFIy14KcpIfUKnJduVZ
 k8s.io/streaming v0.36.4 h1:RS5YlhrdBN2pKGVjgygGntdu6SNdsduyjGWGe3cX0vo=
 k8s.io/streaming v0.36.4/go.mod h1:tJ6S2bZa2HxIBauguBbCWSCYyd93Grfz1+z3tcOvlDE=
 k8s.io/utils v0.0.0-20200729134348-d5654de09c73/go.mod h1:jPW/WVKK9YHAvNhRxK0md/EJ228hCsBRufyofKtW8HA=
-k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3 h1:jVkFFVfXdXP74B/zbO3hM3hpSFD0xvhQ5U686DPurkE=
-k8s.io/utils v0.0.0-20260707023825-cf1189d6abe3/go.mod h1:M2s5JB1lIYP3jzZdorPLHXIPJzt9vv2muW5a6L9DtNM=
+k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab h1:pjQrNLaF//ytZtWwCAHtW+pqwSKjtWDqzA8+TCX37RI=
+k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab/go.mod h1:DdQ0BJxlQtuMlKDqdg7X5IMMQCXIk2b3d1/4M9OhUYo=
 rsc.io/binaryregexp v0.2.0/go.mod h1:qTv7/COck+e2FymRvadv62gMdZztPaShugOCi3I+8D8=
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0 h1:hSfpvjjTQXQY2Fol2CS0QHMNs/WI1MOSGzCm1KhM5ec=
 sigs.k8s.io/apiserver-network-proxy/konnectivity-client v0.34.0/go.mod h1:Ve9uj1L+deCXFrPOk1LpFXqTg7LCFzFso6PA48q/XZw=
