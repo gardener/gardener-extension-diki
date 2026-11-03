@@ -31,6 +31,17 @@ server:
 garden:
   # kubeconfig for the garden cluster (for SubjectAccessReview). Empty = in-cluster.
   kubeconfigPath: /etc/diki/garden-kubeconfig
+objectStore:
+  s3:
+    bucket: bucket-name
+    # AWS region or S3-compatible region.
+    region: eu-west-1
+    # Custom S3-compatible endpoint (e.g., Ceph RGW or MinIO). When set, path-style
+    # addressing is enabled and SDK checksum trailers are disabled. Leave empty for AWS S3.
+    endpoint: https://s3.example.com
+    # Path to an AWS-style credentials file (INI format with aws_access_key_id and
+    # aws_secret_access_key).
+    credentialsFile: /etc/diki/s3-credentials
 ```
 
 ---
