@@ -7,6 +7,7 @@ package dikioperator
 import (
 	"fmt"
 
+	dikiconfigv1alpha1 "github.com/gardener/diki-operator/pkg/apis/config/v1alpha1"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -241,7 +242,13 @@ func (c *Component) roleLeaderElection() *rbacv1.Role {
 			{
 				APIGroups: []string{"coordination.k8s.io"},
 				Resources: []string{"leases"},
-				Verbs:     []string{"get", "create", "update"},
+				Verbs:     []string{"create"},
+			},
+			{
+				APIGroups:     []string{"coordination.k8s.io"},
+				Resources:     []string{"leases"},
+				ResourceNames: []string{dikiconfigv1alpha1.DefaultLockObjectName},
+				Verbs:         []string{"get", "update"},
 			},
 		},
 	}

@@ -666,7 +666,8 @@ func expectedLeaderElectionRole() *rbacv1.Role {
 		ObjectMeta: metav1.ObjectMeta{Name: constants.DikiOperatorName + "-leader-election", Namespace: metav1.NamespaceSystem, Labels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 		Rules: []rbacv1.PolicyRule{
 			{APIGroups: []string{"", "events.k8s.io"}, Resources: []string{"events"}, Verbs: []string{"create", "update", "patch"}},
-			{APIGroups: []string{"coordination.k8s.io"}, Resources: []string{"leases"}, Verbs: []string{"get", "create", "update"}},
+			{APIGroups: []string{"coordination.k8s.io"}, Resources: []string{"leases"}, Verbs: []string{"create"}},
+			{APIGroups: []string{"coordination.k8s.io"}, Resources: []string{"leases"}, ResourceNames: []string{"diki-operator-leader-election"}, Verbs: []string{"get", "update"}},
 		},
 	}
 }
