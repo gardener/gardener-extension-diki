@@ -11,7 +11,6 @@ import (
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-diki/pkg/constants"
 )
@@ -281,7 +280,7 @@ func (c *Component) validatingWebhookConfiguration() *admissionregistrationv1.Va
 		failurePolicy  = admissionregistrationv1.Fail
 		matchPolicy    = admissionregistrationv1.Equivalent
 		sideEffects    = admissionregistrationv1.SideEffectClassNone
-		timeoutSeconds = ptr.To[int32](10)
+		timeoutSeconds = new(int32(10))
 		webhookURL     = fmt.Sprintf("https://%s.%s.svc", constants.DikiOperatorName, c.values.Namespace)
 	)
 
@@ -303,7 +302,7 @@ func (c *Component) validatingWebhookConfiguration() *admissionregistrationv1.Va
 					},
 				}},
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					URL:      ptr.To(webhookURL + "/webhooks/compliancescan"),
+					URL:      new(webhookURL + "/webhooks/compliancescan"),
 					CABundle: c.values.WebhookCABundle,
 				},
 				FailurePolicy:  &failurePolicy,
@@ -323,7 +322,7 @@ func (c *Component) validatingWebhookConfiguration() *admissionregistrationv1.Va
 					},
 				}},
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					URL:      ptr.To(webhookURL + "/webhooks/scheduledcompliancescan/validate"),
+					URL:      new(webhookURL + "/webhooks/scheduledcompliancescan/validate"),
 					CABundle: c.values.WebhookCABundle,
 				},
 				FailurePolicy:  &failurePolicy,
@@ -340,7 +339,7 @@ func (c *Component) mutatingWebhookConfiguration() *admissionregistrationv1.Muta
 		failurePolicy  = admissionregistrationv1.Fail
 		matchPolicy    = admissionregistrationv1.Equivalent
 		sideEffects    = admissionregistrationv1.SideEffectClassNone
-		timeoutSeconds = ptr.To[int32](10)
+		timeoutSeconds = new(int32(10))
 		webhookURL     = fmt.Sprintf("https://%s.%s.svc", constants.DikiOperatorName, c.values.Namespace)
 	)
 
@@ -362,7 +361,7 @@ func (c *Component) mutatingWebhookConfiguration() *admissionregistrationv1.Muta
 					},
 				}},
 				ClientConfig: admissionregistrationv1.WebhookClientConfig{
-					URL:      ptr.To(webhookURL + "/webhooks/scheduledcompliancescan/mutate"),
+					URL:      new(webhookURL + "/webhooks/scheduledcompliancescan/mutate"),
 					CABundle: c.values.WebhookCABundle,
 				},
 				FailurePolicy:  &failurePolicy,
