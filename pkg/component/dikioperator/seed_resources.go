@@ -25,7 +25,6 @@ import (
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
 	componentbaseconfigv1alpha1 "k8s.io/component-base/config/v1alpha1"
-	"k8s.io/utils/ptr"
 
 	"github.com/gardener/gardener-extension-diki/pkg/constants"
 )
@@ -37,7 +36,7 @@ func (c *Component) serviceAccount() *corev1.ServiceAccount {
 			Namespace: c.values.Namespace,
 			Labels:    c.labels(),
 		},
-		AutomountServiceAccountToken: ptr.To(false),
+		AutomountServiceAccountToken: new(false),
 	}
 }
 
@@ -83,7 +82,7 @@ func (c *Component) operatorConfig() (string, error) {
 			Format: "json",
 		},
 		LeaderElection: &componentbaseconfigv1alpha1.LeaderElectionConfiguration{
-			LeaderElect:       ptr.To(true),
+			LeaderElect:       new(true),
 			ResourceLock:      "leases",
 			ResourceName:      dikiconfigv1alpha1.DefaultLockObjectName,
 			ResourceNamespace: dikiconfigv1alpha1.DefaultLockObjectNamespace,
@@ -95,11 +94,11 @@ func (c *Component) operatorConfig() (string, error) {
 					TargetKubeconfig: &dikiconfigv1alpha1.KubeconfigConfig{
 						SecretRef: dikiconfigv1alpha1.SecretRef{
 							Name: c.values.GenericTokenKubeconfigSecretName,
-							Key:  ptr.To("kubeconfig"),
+							Key:  new("kubeconfig"),
 						},
 						TokenSecretRef: &dikiconfigv1alpha1.SecretRef{
 							Name: c.values.RunnerShootAccessSecretName,
-							Key:  ptr.To("token"),
+							Key:  new("token"),
 						},
 						MountPath: gutil.VolumeMountPathGenericKubeconfig,
 					},
@@ -122,7 +121,7 @@ func (c *Component) operatorConfig() (string, error) {
 		cfg.Controllers.ComplianceScan.BaseOptions = &dikiconfigv1alpha1.BaseOptionsConfig{
 			ConfigMapRef: dikiconfigv1alpha1.ConfigMapRef{
 				Name: baseOptionsConfigMapName,
-				Key:  ptr.To(baseOptionsConfigMapKey),
+				Key:  new(baseOptionsConfigMapKey),
 			},
 		}
 	}
@@ -195,8 +194,8 @@ func (c *Component) deployment() *appsv1.Deployment {
 			Labels:    utils.MergeStringMaps(c.labels(), c.haLabels()),
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas:             ptr.To(c.values.Replicas),
-			RevisionHistoryLimit: ptr.To[int32](2),
+			Replicas:             new(c.values.Replicas),
+			RevisionHistoryLimit: new(int32(2)),
 			Selector:             &metav1.LabelSelector{MatchLabels: c.labels()},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -209,12 +208,12 @@ func (c *Component) deployment() *appsv1.Deployment {
 						SeccompProfile: &corev1.SeccompProfile{
 							Type: corev1.SeccompProfileTypeRuntimeDefault,
 						},
-						RunAsNonRoot: ptr.To(true),
-						RunAsUser:    ptr.To[int64](65532),
-						RunAsGroup:   ptr.To[int64](65532),
-						FSGroup:      ptr.To[int64](65532),
+						RunAsNonRoot: new(true),
+						RunAsUser:    new(int64(65532)),
+						RunAsGroup:   new(int64(65532)),
+						FSGroup:      new(int64(65532)),
 					},
-					AutomountServiceAccountToken: ptr.To(true),
+					AutomountServiceAccountToken: new(true),
 					Containers: []corev1.Container{{
 						Name:            constants.DikiOperatorName,
 						Image:           c.values.Image,
@@ -241,11 +240,11 @@ func (c *Component) deployment() *appsv1.Deployment {
 							},
 						},
 						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: ptr.To(false),
+							AllowPrivilegeEscalation: new(false),
 							Capabilities: &corev1.Capabilities{
 								Drop: []corev1.Capability{"ALL"},
 							},
-							ReadOnlyRootFilesystem: ptr.To(true),
+							ReadOnlyRootFilesystem: new(true),
 						},
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler: corev1.ProbeHandler{
@@ -294,7 +293,7 @@ func (c *Component) deployment() *appsv1.Deployment {
 									LocalObjectReference: corev1.LocalObjectReference{
 										Name: constants.DikiOperatorName,
 									},
-									DefaultMode: ptr.To[int32](0440),
+									DefaultMode: new(int32(0440)),
 								},
 							},
 						},
@@ -303,7 +302,7 @@ func (c *Component) deployment() *appsv1.Deployment {
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName:  c.values.ServerTLSSecretName,
-									DefaultMode: ptr.To[int32](0440),
+									DefaultMode: new(int32(0440)),
 								},
 							},
 						},
@@ -365,7 +364,7 @@ func (c *Component) runServiceAccount() *corev1.ServiceAccount {
 			Namespace: c.values.Namespace,
 			Labels:    c.labels(),
 		},
-		AutomountServiceAccountToken: ptr.To(false),
+		AutomountServiceAccountToken: new(false),
 	}
 }
 
@@ -383,20 +382,20 @@ func (c *Component) verticalPodAutoscaler() *vpaautoscalingv1.VerticalPodAutosca
 				Name:       constants.DikiOperatorName,
 			},
 			UpdatePolicy: &vpaautoscalingv1.PodUpdatePolicy{
-				UpdateMode: ptr.To(vpaautoscalingv1.UpdateModeInPlaceOrRecreate),
+				UpdateMode: new(vpaautoscalingv1.UpdateModeInPlaceOrRecreate),
 			},
 			ResourcePolicy: &vpaautoscalingv1.PodResourcePolicy{
 				ContainerPolicies: []vpaautoscalingv1.ContainerResourcePolicy{
 					{
 						ContainerName:    constants.DikiOperatorName,
-						ControlledValues: ptr.To(vpaautoscalingv1.ContainerControlledValuesRequestsOnly),
+						ControlledValues: new(vpaautoscalingv1.ContainerControlledValuesRequestsOnly),
 						MinAllowed: corev1.ResourceList{
 							corev1.ResourceMemory: resource.MustParse("32Mi"),
 						},
 					},
 					{
 						ContainerName: vpaautoscalingv1.DefaultContainerResourcePolicy,
-						Mode:          ptr.To(vpaautoscalingv1.ContainerScalingModeOff),
+						Mode:          new(vpaautoscalingv1.ContainerScalingModeOff),
 					},
 				},
 			},

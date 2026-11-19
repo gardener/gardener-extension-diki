@@ -17,7 +17,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/gardener/gardener-extension-diki/pkg/constants"
@@ -124,14 +123,14 @@ func (c *Component) seedResources() (map[string][]byte, error) {
 
 	service := c.service()
 	if err := gutil.InjectNetworkPolicyAnnotationsForScrapeTargets(service, networkingv1.NetworkPolicyPort{
-		Port:     ptr.To(intstr.FromInt32(portMetrics)),
-		Protocol: ptr.To(corev1.ProtocolTCP),
+		Port:     new(intstr.FromInt32(portMetrics)),
+		Protocol: new(corev1.ProtocolTCP),
 	}); err != nil {
 		return nil, fmt.Errorf("failed to inject network policy annotations: %w", err)
 	}
 	if err := gutil.InjectNetworkPolicyAnnotationsForWebhookTargets(service, networkingv1.NetworkPolicyPort{
-		Port:     ptr.To(intstr.FromInt32(portWebhook)),
-		Protocol: ptr.To(corev1.ProtocolTCP),
+		Port:     new(intstr.FromInt32(portWebhook)),
+		Protocol: new(corev1.ProtocolTCP),
 	}); err != nil {
 		return nil, fmt.Errorf("failed to inject webhook network policy annotations: %w", err)
 	}

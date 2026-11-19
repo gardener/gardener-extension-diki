@@ -36,7 +36,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	vpaautoscalingv1 "k8s.io/autoscaler/vertical-pod-autoscaler/pkg/apis/autoscaling.k8s.io/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	fakeclient "sigs.k8s.io/controller-runtime/pkg/client/fake"
 
@@ -298,7 +297,7 @@ func expectedServiceAccount() *corev1.ServiceAccount {
 			Namespace: "shoot--foo--bar",
 			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
-		AutomountServiceAccountToken: ptr.To(false),
+		AutomountServiceAccountToken: new(false),
 	}
 }
 
@@ -309,7 +308,7 @@ func expectedRunServiceAccount() *corev1.ServiceAccount {
 			Namespace: "shoot--foo--bar",
 			Labels:    map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName},
 		},
-		AutomountServiceAccountToken: ptr.To(false),
+		AutomountServiceAccountToken: new(false),
 	}
 }
 
@@ -383,8 +382,8 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 			),
 		},
 		Spec: appsv1.DeploymentSpec{
-			Replicas:             ptr.To(replicas),
-			RevisionHistoryLimit: ptr.To[int32](2),
+			Replicas:             new(replicas),
+			RevisionHistoryLimit: new(int32(2)),
 			Selector:             &metav1.LabelSelector{MatchLabels: map[string]string{"app.kubernetes.io/name": constants.DikiOperatorName}},
 			Template: corev1.PodTemplateSpec{
 				ObjectMeta: metav1.ObjectMeta{
@@ -400,12 +399,12 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 					ServiceAccountName: constants.DikiOperatorName,
 					SecurityContext: &corev1.PodSecurityContext{
 						SeccompProfile: &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault},
-						RunAsNonRoot:   ptr.To(true),
-						RunAsUser:      ptr.To[int64](65532),
-						RunAsGroup:     ptr.To[int64](65532),
-						FSGroup:        ptr.To[int64](65532),
+						RunAsNonRoot:   new(true),
+						RunAsUser:      new(int64(65532)),
+						RunAsGroup:     new(int64(65532)),
+						FSGroup:        new(int64(65532)),
 					},
-					AutomountServiceAccountToken: ptr.To(true),
+					AutomountServiceAccountToken: new(true),
 					Containers: []corev1.Container{{
 						Name:            constants.DikiOperatorName,
 						Image:           "europe-docker.pkg.dev/gardener-project/releases/gardener/diki-operator:v0.1.0",
@@ -420,9 +419,9 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 							{Name: "webhooks", ContainerPort: 10443, Protocol: corev1.ProtocolTCP},
 						},
 						SecurityContext: &corev1.SecurityContext{
-							AllowPrivilegeEscalation: ptr.To(false),
+							AllowPrivilegeEscalation: new(false),
 							Capabilities:             &corev1.Capabilities{Drop: []corev1.Capability{"ALL"}},
-							ReadOnlyRootFilesystem:   ptr.To(true),
+							ReadOnlyRootFilesystem:   new(true),
 						},
 						LivenessProbe: &corev1.Probe{
 							ProbeHandler:        corev1.ProbeHandler{HTTPGet: &corev1.HTTPGetAction{Path: "/healthz", Port: intstr.FromInt32(8081), Scheme: corev1.URISchemeHTTP}},
@@ -449,7 +448,7 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 							VolumeSource: corev1.VolumeSource{
 								ConfigMap: &corev1.ConfigMapVolumeSource{
 									LocalObjectReference: corev1.LocalObjectReference{Name: constants.DikiOperatorName},
-									DefaultMode:          ptr.To[int32](0440),
+									DefaultMode:          new(int32(0440)),
 								},
 							},
 						},
@@ -458,7 +457,7 @@ func expectedDeployment(replicas int32) *appsv1.Deployment {
 							VolumeSource: corev1.VolumeSource{
 								Secret: &corev1.SecretVolumeSource{
 									SecretName:  "diki-operator-tls-12345", //#nosec G101 - not credentials
-									DefaultMode: ptr.To[int32](0440),
+									DefaultMode: new(int32(0440)),
 								},
 							},
 						},
@@ -519,18 +518,18 @@ func expectedVPA() *vpaautoscalingv1.VerticalPodAutoscaler {
 				Name:       constants.DikiOperatorName,
 			},
 			UpdatePolicy: &vpaautoscalingv1.PodUpdatePolicy{
-				UpdateMode: ptr.To(vpaautoscalingv1.UpdateModeInPlaceOrRecreate),
+				UpdateMode: new(vpaautoscalingv1.UpdateModeInPlaceOrRecreate),
 			},
 			ResourcePolicy: &vpaautoscalingv1.PodResourcePolicy{
 				ContainerPolicies: []vpaautoscalingv1.ContainerResourcePolicy{
 					{
 						ContainerName:    constants.DikiOperatorName,
-						ControlledValues: ptr.To(vpaautoscalingv1.ContainerControlledValuesRequestsOnly),
+						ControlledValues: new(vpaautoscalingv1.ContainerControlledValuesRequestsOnly),
 						MinAllowed:       corev1.ResourceList{corev1.ResourceMemory: resource.MustParse("32Mi")},
 					},
 					{
 						ContainerName: vpaautoscalingv1.DefaultContainerResourcePolicy,
-						Mode:          ptr.To(vpaautoscalingv1.ContainerScalingModeOff),
+						Mode:          new(vpaautoscalingv1.ContainerScalingModeOff),
 					},
 				},
 			},
@@ -694,11 +693,11 @@ func expectedValidatingWebhookConfiguration() *admissionregistrationv1.Validatin
 					Operations: []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update},
 					Rule:       admissionregistrationv1.Rule{APIGroups: []string{"diki.gardener.cloud"}, APIVersions: []string{"v1alpha1"}, Resources: []string{"compliancescans"}},
 				}},
-				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/compliancescan", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
+				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: new(fmt.Sprintf("https://%s.%s.svc/webhooks/compliancescan", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
 				FailurePolicy:  &failurePolicy,
 				MatchPolicy:    &matchPolicy,
 				SideEffects:    &sideEffects,
-				TimeoutSeconds: ptr.To[int32](10),
+				TimeoutSeconds: new(int32(10)),
 			},
 			{
 				Name:                    "scheduledcompliancescans.diki.gardener.cloud",
@@ -707,11 +706,11 @@ func expectedValidatingWebhookConfiguration() *admissionregistrationv1.Validatin
 					Operations: []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update},
 					Rule:       admissionregistrationv1.Rule{APIGroups: []string{"diki.gardener.cloud"}, APIVersions: []string{"v1alpha1"}, Resources: []string{"scheduledcompliancescans"}},
 				}},
-				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/scheduledcompliancescan/validate", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
+				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: new(fmt.Sprintf("https://%s.%s.svc/webhooks/scheduledcompliancescan/validate", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
 				FailurePolicy:  &failurePolicy,
 				MatchPolicy:    &matchPolicy,
 				SideEffects:    &sideEffects,
-				TimeoutSeconds: ptr.To[int32](10),
+				TimeoutSeconds: new(int32(10)),
 			},
 		},
 	}
@@ -732,11 +731,11 @@ func expectedMutatingWebhookConfiguration() *admissionregistrationv1.MutatingWeb
 					Operations: []admissionregistrationv1.OperationType{admissionregistrationv1.Create, admissionregistrationv1.Update},
 					Rule:       admissionregistrationv1.Rule{APIGroups: []string{"diki.gardener.cloud"}, APIVersions: []string{"v1alpha1"}, Resources: []string{"scheduledcompliancescans"}},
 				}},
-				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: ptr.To(fmt.Sprintf("https://%s.%s.svc/webhooks/scheduledcompliancescan/mutate", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
+				ClientConfig:   admissionregistrationv1.WebhookClientConfig{URL: new(fmt.Sprintf("https://%s.%s.svc/webhooks/scheduledcompliancescan/mutate", constants.DikiOperatorName, "shoot--foo--bar")), CABundle: []byte("ca-bundle-data")},
 				FailurePolicy:  &failurePolicy,
 				MatchPolicy:    &matchPolicy,
 				SideEffects:    &sideEffects,
-				TimeoutSeconds: ptr.To[int32](10),
+				TimeoutSeconds: new(int32(10)),
 			},
 		},
 	}
