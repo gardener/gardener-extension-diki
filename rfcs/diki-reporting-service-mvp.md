@@ -2,91 +2,73 @@
 
 ![diki-reporting-service](./images/diki-reporting-service.png)
 
-Implement `diki-reporting-service`, an HTTP service that allows [diki](https://github.com/gardener/diki) scan jobs to push compliance-scan reports to S3-compatible object storage, and provides operators and dashboards a way to retrieve those reports — raw, as JSON, or rendered as HTML — with access gated by the caller's existing Gardener RBAC permissions, verified via SubjectAccessReview against the garden cluster.
+Implement `diki-reporting-service`, an HTTP service that allows [diki](https://github.com/gardener/diki) scan jobs to push compliance-scan reports to S3-compatible object storage, and provides operators and dashboards a way to retrieve those reports as JSON, with access gated by the caller's existing Gardener RBAC permissions.
 
-Two endpoints, served on **separate ports with distinct trust models** (plus a plain-HTTP health port):
+- **Ingest** is authenticated by a Gardener `WorkloadIdentity` (WI) JWT over server TLS. The shoot and project identity is derived from the token claims, not from the URL.
+- **Retrieve** is authenticated by a garden user token and authorized via `SubjectAccessReview` against a virtual resource `dikireports.authorization.extensions.gardener.cloud`.
+
+The service runs in the runtime garden cluster and can be deployed as part of the garden-class runtime charts.
+
+Two listeners:
 
 | Port | Endpoint | Transport / auth |
 |------|----------|------------------|
-| `:8443` | `POST .../reports` (ingest) | **mTLS** + optional **Gardener WorkloadIdentity JWT** for per-shoot identity |
-| `:8444` | `GET .../reports` (fetch) | **TLS** + per-caller Gardener RBAC via SubjectAccessReview |
-| `:8080` | `GET /healthz` | plain HTTP, unauthenticated |
+| `:8443` | API: `PUT .../reports/{id}` (ingest), `GET .../reports` (retrieve) | **TLS** + WI JWT (ingest) / garden user token + SAR (retrieve) |
+| `:8080` | `GET /healthz` `/readyz` `/metrics` | plain HTTP, cluster-internal, unauthenticated |
+
+Ingest and retrieve share one TLS listener. They differ only in how the bearer token is verified, and the two token types cannot be confused: a WI JWT fails `TokenReview` (the virtual garden does not accept the WI issuer), and a user token fails JWKS verification and the `aud` check.
 
 **Example configuration:**
 ```yaml
 apiVersion: config.service.diki.gardener.cloud/v1alpha1
 kind: ReportingServiceConfiguration
 server:
-  ingest:                          # POST — mutual TLS + optional WorkloadIdentity JWT
+  api:                     # ingest (PUT) + retrieve (GET), server-side TLS
     bindAddress: ":8443"
-    tlsCertFile: /etc/diki/ingest-tls.crt
-    tlsKeyFile: /etc/diki/ingest-tls.key
-    clientCAFile: /etc/diki/client-ca.crt
-    # Optional: per-shoot identity verification via Gardener WorkloadIdentity JWTs.
-    # When set, exporters must present a JWT whose shoot/project claims match the URL path.
-    # When omitted, ingest runs mTLS-only (no per-shoot identity check).
-    workloadIdentity:
-      # Gardener WorkloadIdentity issuer URL — the exact "iss" claim of the tokens.
-      # JWKS is fetched from {issuer}/jwks for local signature verification.
-      issuer: https://discovery.ingress.garden.example.com/garden/workload-identity/issuer
-      # Acceptable "aud" claim values. The WorkloadIdentity resource in the garden
-      # cluster must include one of these in spec.audiences.
-      audiences:
-        - diki-reporting-service
-      # WorkloadIdentity resources whose JWTs are accepted. Each entry's name and
-      # namespace must match the "gardener.cloud.workloadIdentity" claim in the JWT.
-      allowedIdentities:
-        - name: my-wi-resource
-          namespace: garden
-  fetch:                           # GET — server-side TLS; per-caller SAR authorization
-    bindAddress: ":8444"
-    tlsCertFile: /etc/diki/fetch-tls.crt
-    tlsKeyFile: /etc/diki/fetch-tls.key
-  health:                          # /healthz — plain HTTP
+    tlsCertFile: /etc/diki/tls.crt
+    tlsKeyFile: /etc/diki/tls.key
+  health:                  # /healthz, /readyz, /metrics; cluster-internal, plain HTTP
     bindAddress: ":8080"
-garden:
-  # kubeconfig for the garden cluster (for SubjectAccessReview). Empty = in-cluster.
-  kubeconfigPath: /etc/diki/garden-kubeconfig
+auth:
+  workloadIdentity:        # ingest; mandatory
+    # Gardener WorkloadIdentity issuer URL — the exact "iss" claim of the tokens.
+    issuer: https://discovery.ingress.garden.example.com/garden/workload-identity/issuer
+    # Acceptable "aud" values. The WorkloadIdentity resource must list one in spec.audiences.
+    audiences:
+      - diki-reporting-service
+    # WorkloadIdentity whose JWTs are accepted (namespace is always `garden`).
+    # Security-critical.
+    allowedIdentities:
+      - namespace: garden
+        name: diki-reporting-service
+        uid: <workload-identity-uid>
+  garden:                  # retrieve; TokenReview + SubjectAccessReview
+    kubeconfigPath: /etc/diki/garden-kubeconfig
 objectStore:
   s3:
-    bucket: bucket-name
-    # AWS region or S3-compatible region.
+    bucket: diki-reports
     region: eu-west-1
-    # Custom S3-compatible endpoint (e.g., Ceph RGW or MinIO). When set, path-style
-    # addressing is enabled and SDK checksum trailers are disabled. Leave empty for AWS S3.
+    # Custom S3-compatible endpoint (Ceph RGW, MinIO). When set, path-style addressing
+    # is enabled and SDK checksum trailers are disabled. Leave empty for AWS S3.
     endpoint: https://s3.example.com
-    # Path to an AWS-style credentials file (INI format with aws_access_key_id and
-    # aws_secret_access_key).
+    # AWS-style credentials file (INI with aws_access_key_id / aws_secret_access_key).
     credentialsFile: /etc/diki/s3-credentials
 ```
 
 ---
 
-## POST /v1/{project_name}/{project_uid}/{shoot_name}/{shoot_uid}/reports
+## Identity: WorkloadIdentity
 
-Ingest a diki compliance-scan report. Port `:8443`.
+Ingest identity comes from a Gardener WI JWT minted by the shoot's gardenlet. With gardener/gardener#16284, a `shoot` claim is present only if a gardenlet minted the token for a shoot on its own seed, for a WI the seed references. That makes the claims a reliable source of identity, so the shoot/project are taken from the token, never from the URL.
 
-### Authentication
+### Garden-side prerequisites
 
-**Transport layer — mTLS:** The caller (a diki-exporter) must present a client certificate signed by the ingest client CA. This authenticates the caller as "a trusted diki-exporter."
-
-**Application layer — Gardener WorkloadIdentity JWT (optional):** When `workloadIdentity` is configured, the exporter must additionally present an `Authorization: Bearer <token>` header containing a Gardener WorkloadIdentity JWT. The service validates:
-
-1. **Signature** — verified locally against the JWKS fetched from the configured issuer
-2. **Standard claims** — `exp` (not expired), `iss` (matches configured issuer), `aud` (intersection with configured audiences)
-3. **Allowed identity** — `gardener.cloud.workloadIdentity` claim (name + namespace) must match one of the configured `allowedIdentities`
-4. **Shoot/project identity** — `gardener.cloud.shoot.{name,uid}` and `gardener.cloud.project.{name,uid}` must match the URL path parameters
-
-This ensures a shoot's exporter can only write reports under its own path. When `workloadIdentity` is omitted from the config, ingest runs mTLS-only (backward compatible).
-
-### Garden-side prerequisites for WorkloadIdentity
-
-1. **Create a `WorkloadIdentity` resource** in the garden cluster (e.g. in `garden` project):
+1. **Create the `WorkloadIdentity`** in the `garden` namespace (required — `seedReferencesWorkloadIdentity` hard-codes the `garden` namespace):
    ```yaml
    apiVersion: security.gardener.cloud/v1alpha1
    kind: WorkloadIdentity
    metadata:
-     name: my-wi-resource
+     name: diki-reporting-service
      namespace: garden
    spec:
      audiences:
@@ -94,138 +76,163 @@ This ensures a shoot's exporter can only write reports under its own path. When 
      targetSystem:
        type: diki-reporting-service
    ```
+   Deployed manually in the `garden` namespace of the virtual garden for the MVP.
 
-2. **Grant gardenlets permission** to request tokens for the WorkloadIdentity:
+2. **Reference it from every seed** that may host diki-enabled shoots, via `Seed.spec.resources` (ManagedSeed / `Gardenlet` seed config, or the Seed manifest):
    ```yaml
-   apiVersion: rbac.authorization.k8s.io/v1
-   kind: Role
-   metadata:
-     name: my-wi-resource:wi-token-requestor
-     namespace: garden
-   rules:
-     - apiGroups:
-         - security.gardener.cloud
-       resources:
-         - workloadidentities/token
-       resourceNames:
-         - my-wi-resource
-       verbs:
-         - create
-   ---
-   apiVersion: rbac.authorization.k8s.io/v1
-   kind: RoleBinding
-   metadata:
-     name: my-wi-resource:wi-token-requestor:seeds
-     namespace: garden
-   roleRef:
-     apiGroup: rbac.authorization.k8s.io
-     kind: Role
-     name: my-wi-resource:wi-token-requestor
-   subjects:
-     - apiGroup: rbac.authorization.k8s.io
-       kind: Group
-       name: gardener.cloud:system:seeds
+   spec:
+     resources:
+     - name: diki-reporting-service
+       resourceRef:
+         apiVersion: security.gardener.cloud/v1alpha1
+         kind: WorkloadIdentity
+         name: diki-reporting-service   # resolved in the `garden` namespace
    ```
+   This authorizes the seed's gardenlet to mint tokens for the WI through the SeedAuthorizer graph — **no extra RBAC is needed**. It is expected to be present on the seed. If a seed is missing the reference, token minting returns `403` and the export for shoots on that seed simply fails.
 
-3. **Create a token-requestor Secret** in the shoot's seed namespace so the gardenlet mints JWTs:
-   ```yaml
-   apiVersion: v1
-   kind: Secret
-   metadata:
-     name: my-wi-resource
-     namespace: shoot--my-project--my-shoot
-     labels:
-       security.gardener.cloud/purpose: workload-identity-token-requestor
-     annotations:
-       workloadidentity.security.gardener.cloud/name: my-wi-resource
-       workloadidentity.security.gardener.cloud/namespace: garden
-       workloadidentity.security.gardener.cloud/context-object: |
-         {"kind":"Shoot","apiVersion":"core.gardener.cloud/v1beta1",
-          "name":"my-shoot","namespace":"garden-my-project",
-          "uid":"<shoot-uid>"}
-   type: Opaque
-   ```
+3. **No manual Secrets.** The extension creates the token-requestor Secret in each shoot's control-plane namespace with the Shoot as context object. gardenlet mints and renews the token; diki-operator mounts it into the exporter and sends it as `Authorization: Bearer`.
+
+### Token-requestor Secret (created by the extension)
+
+The shoot-class extension creates this in the shoot's **control-plane namespace** (`shoot--<project>--<shoot>`) on `Reconcile`/`Restore` and deletes it on `Delete`. On `Migrate` the destination seed re-creates it. gardenlet requires the Secret to live in the shoot's control-plane namespace with a matching UID; any other namespace is rejected.
+
+Use Gardener's helper (`pkg/utils/workloadidentity`, `NewSecret(...).For(name, "garden", providerType).WithContextObject(...)` / `Deploy(...)`) so labels (including `workloadidentity.security.gardener.cloud/provider`), the `token` key, and optimistic locking against gardenlet's token writes are handled correctly. The extension needs the WI name as configuration.
+
+---
+
+## PUT /v1/reports/{complianceScanUID} — ingest
+
+Ingest a diki compliance-scan report, keyed by the `ComplianceScan` UID.
+
+Project and shoot are taken **entirely from the verified token claims** (`gardener.cloud.project`, `gardener.cloud.shoot`); the exporter needs nothing but the service URL and its token.
 
 ### Headers
 
 - `Content-Type: application/json`
-- `Content-Encoding: gzip` *(required — the body must be a gzip-compressed JSON report)*
-- `Authorization: Bearer <workload-identity-jwt>` *(required when `workloadIdentity` is configured)*
+- `Authorization: Bearer <workload-identity-jwt>` *(required)*
 
-### Request body (gzip-compressed JSON)
+### Request body
 
-```json
-{
-  "scanID": "scan-2026-09-25",
-  "report": { ...diki report JSON... }
-}
+The raw diki report JSON (no envelope).
+
+### <a name="ingest-validation"></a>Validation
+
+1. **Signature** — verified locally against the JWKS discovered from the configured issuer via OIDC discovery (`{issuer}/.well-known/openid-configuration` → `jwks_uri`), with key caching and refresh on unknown `kid`.
+2. **Standard claims** — `exp` (not expired), `iss` (matches configured issuer), `aud` (intersection with configured audiences).
+3. **Allowed identity** — pinned by `sub` (`gardener.cloud:workloadidentity:garden:<name>:<uid>`) or `gardener.cloud.workloadIdentity.{namespace,name,uid}`, matched against `allowedIdentities`. Namespace must be `garden`.
+4. **Context claims present** — `gardener.cloud.shoot` **and** `gardener.cloud.project` must be present and non-empty.
+5. **Report ID** — `{complianceScanUID}` validated as a UUID (no charset / path-traversal concern).
+
+### Storage key
+
+```
+{projectName}/{projectUID}/{shootName}/{shootUID}/{complianceScanUID}.json.gz
 ```
 
-> [!NOTE]
-> Alternatively, the body could be **only the diki report** (no `scanID`), and the reporting-service would generate the scan ID itself and return it in the response.
+All identity segments come from the token claims, never from the path. Reports are stored gzip-compressed. Project namespace is also stored as object metadata.
 
 ### Responses
 
-- `201 Created` — `{"key": "my-project/proj-uid-456/my-shoot/uid-123/scan-2026-09-25.json.gz"}`
-- `400 Bad Request` — missing scanID/report, body not gzip, or decompressed body not valid JSON
-- `401 Unauthorized` — missing or invalid JWT (when WorkloadIdentity is configured)
-- `403 Forbidden` — JWT claims don't match the URL path, or workload identity not allowed
-- `500 Internal Server Error` — storage failure
+- `201 Created` — `Location: /v1/projects/{project}/shoots/{shoot}/reports/{complianceScanUID}`
+- `400 Bad Request` — body not valid JSON, or invalid `{complianceScanUID}`
+- `401 Unauthorized` — missing/invalid JWT (with `WWW-Authenticate: Bearer`)
+- `403 Forbidden` — identity not allowed, or missing `shoot`/`project` claims
+- `415 Unsupported Media Type` — unsupported `Content-Type` / `Content-Encoding`
 
 ---
 
-## GET /v1/{project_name}/{project_uid}/{shoot_name}/{shoot_uid}/reports
+## GET — retrieve
 
-List all scan IDs stored for a shoot, or retrieve a specific report. Port `:8444`.
+Retrieve reports as JSON. Authorized against the virtual resource `dikireports.authorization.extensions.gardener.cloud`, the same pattern as [oidc-apps-controller](https://github.com/gardener/oidc-apps-controller). The service does not read `Shoots`.
 
-### Authentication
+```
+# list reports of a shoot name (across all its instances)
+GET /v1/projects/{project}/shoots/{shoot}/reports?limit=20&continue=…[&shootUID=…]
 
-`Authorization: Bearer <token>` — a **garden-apiserver token** (Gardener user or dashboard forwarding the user's token). The service verifies the project/shoot UIDs against the garden objects and runs a SubjectAccessReview (`get shoots`) against the garden cluster as the caller. Returns `403 Forbidden` if the check or a UID match fails.
+# list reports of all shoots of a project
+GET /v1/projects/{project}/reports?limit=20&continue=…
+
+# single report
+GET /v1/projects/{project}/shoots/{shoot}/reports/{id}
+GET /v1/projects/{project}/shoots/{shoot}/reports/latest
+```
+
+### Authentication & authorization
+
+The caller's bearer token (a garden user token, e.g. forwarded by the dashboard) is identified with a `TokenReview` against the virtual garden, then authorized with a `SubjectAccessReview`:
+
+| Request | SAR `resourceAttributes` (`group: authorization.extensions.gardener.cloud`, `resource: dikireports`) |
+|---|---|
+| `GET …/shoots/{shoot}/reports` | `namespace: <project ns>`, `name: {shoot}`, `verb: list` |
+| `GET …/shoots/{shoot}/reports/{id}`, `/latest` | `namespace: <project ns>`, `name: {shoot}`, `verb: get` |
+| `GET …/projects/{project}/reports` | `namespace: <project ns>`, no name, `verb: list` |
+
+The service resolves `{project}` to the live Project (`Project.spec.namespace`, UID) via a Project informer, then reads only under that Project's UID prefix. It returns the same `403` whether the project does not exist or the SAR is denied.
 
 ### Query parameters
 
-- *(none)* — list all scan IDs
-- `scanID=scan-001` — retrieve a specific report
-- `latest=true` — retrieve the most recently stored report
+- `limit`, `continue` — pagination (Kubernetes-style), newest first.
+- `shootUID` — filter a shoot-name listing to a single instance.
 
-### Responses (list)
+### Representation
 
-- `200 OK`
-  ```json
-  {
-    "project": { "name": "my-project", "uid": "proj-uid-456" },
-    "shoot":   { "name": "my-shoot",   "uid": "uid-123" },
-    "scans":   ["scan-001", "scan-002"]
-  }
-  ```
+JSON only. Server-side HTML rendering is out of scope for the MVP. Consumers (the dashboard natively, or diki's renderer locally) render the JSON. HTML can be added later as a new `Accept: text/html` representation without changing paths or the JSON contract.
 
-### Responses (retrieve)
+- Media type: `application/json` only. Missing `Accept`, `*/*`, `application/json` → JSON; anything else → `406`.
+- Compression via `Accept-Encoding: gzip` (served directly from the stored gzip object); always send `Vary: Accept-Encoding`.
 
-Format is controlled by the `Accept` header:
+### Responses
 
-| Accept header                | Response body                        |
-|------------------------------|--------------------------------------|
-| `application/gzip` (default) | Raw gzip-compressed report           |
-| `application/json`           | Decompressed diki report JSON        |
-| `text/html`                  | HTML rendered via diki HTMLRenderer  |
+**List** — `200 OK`, newest first:
+```json
+{
+  "items": [
+    {
+      "id": "…",
+      "shootUID": "…",
+      "createdAt": "2026-11-19T10:00:00Z"
+    }
+  ],
+  "continue": "…"
+}
+```
+Empty list returns `200` with `items: []` (not `404`). `createdAt` is the server receive time, not S3 `LastModified`. Consumers fetch a report by `id` for its contents.
+
+**Single report** — `200 OK` (the diki report JSON). `latest` is the most recently received report across instances.
 
 ### Response codes
 
-- `200 OK` — report or scan list
-- `400 Bad Request` — `scanID` and `latest=true` both provided
-- `401 Unauthorized` — missing or invalid bearer token
-- `403 Forbidden` — SubjectAccessReview denied
-- `404 Not Found` — scan does not exist, or no reports exist for this shoot
-- `500 Internal Server Error` — storage or rendering failure
+- `200 OK`
+- `401 Unauthorized` — missing/invalid token (`WWW-Authenticate: Bearer`)
+- `403 Forbidden` — SAR denied, or project does not exist
+- `404 Not Found` — unknown report ID
+- `406 Not Acceptable` — unsupported `Accept`
 
 ### Examples
 ```bash
-# list all scans
-curl -H "Authorization: Bearer $TOKEN" https://localhost:8444/v1/my-project/proj-uid-456/my-shoot/uid-123/reports
+# list a shoot's reports
+curl -H "Authorization: Bearer $TOKEN" \
+  https://diki-reports.ingress.garden.example.com/v1/projects/my-project/shoots/my-shoot/reports
 
-# specific scan, JSON
-curl -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" "https://localhost:8444/v1/my-project/proj-uid-456/my-shoot/uid-123/reports?scanID=scan-001"
+# a specific report
+curl -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" \
+  https://diki-reports.ingress.garden.example.com/v1/projects/my-project/shoots/my-shoot/reports/3f1c…
 
-# latest report, HTML
-curl -H "Authorization: Bearer $TOKEN" -H "Accept: text/html" "https://localhost:8444/v1/my-project/proj-uid-456/my-shoot/uid-123/reports?latest=true"
+# latest report
+curl -H "Authorization: Bearer $TOKEN" \
+  https://diki-reports.ingress.garden.example.com/v1/projects/my-project/shoots/my-shoot/reports/latest
 ```
+
+---
+
+## Permissions
+
+Deployed into the virtual garden.
+
+**Project admins and owners (default).** A ClusterRole granting `get`/`list` on `dikireports.authorization.extensions.gardener.cloud`, labelled `rbac.gardener.cloud/aggregate-to-project-member` (bound to the `admin` role; `owner` includes `admin`). **Viewers get no access** — reports enumerate cluster weaknesses. The `rbac.gardener.cloud/aggregate-to-extension-role: diki` label lets owners grant access explicitly to non-admins (e.g. auditors) via the `extension:diki` project role.
+
+**Operators (cluster-wide).** A ClusterRole + ClusterRoleBinding to a configured operator group. Garden admins with wildcard permissions pass the SAR anyway.
+
+**The reporting service itself**, nothing more:
+- `create` on `tokenreviews` and `subjectaccessreviews`;
+- `get`/`list`/`watch` on `core.gardener.cloud/projects` (to resolve a namespace to the live project UID).
