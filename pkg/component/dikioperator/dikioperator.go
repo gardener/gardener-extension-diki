@@ -185,6 +185,14 @@ func (c *Component) shootResources() (map[string][]byte, error) {
 	resources["crd-reportoutputs.yaml"] = crdReportOutputs
 	resources["crd-scheduledcompliancescans.yaml"] = crdScheduledComplianceScans
 
+	if c.values.DefaultScheduledScanSpec != nil {
+		scanYAML, err := c.defaultScheduledComplianceScanYAML()
+		if err != nil {
+			return nil, fmt.Errorf("failed to build default scheduled compliance scan: %w", err)
+		}
+		resources["default-scheduledcompliancescan.yaml"] = scanYAML
+	}
+
 	return resources, nil
 }
 

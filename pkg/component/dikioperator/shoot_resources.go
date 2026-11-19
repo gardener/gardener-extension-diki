@@ -5,8 +5,11 @@
 package dikioperator
 
 import (
+	"encoding/json"
 	"fmt"
 
+	dikiv1alpha1 "github.com/gardener/diki-operator/pkg/apis/diki/v1alpha1"
+	"go.yaml.in/yaml/v4"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -365,4 +368,35 @@ func (c *Component) mutatingWebhookConfiguration() *admissionregistrationv1.Muta
 			},
 		},
 	}
+}
+
+func (c *Component) defaultScheduledComplianceScanYAML() ([]byte, error) {
+	scan := &dikiv1alpha1.ScheduledComplianceScan{
+		TypeMeta: metav1.TypeMeta{
+			APIVersion: dikiv1alpha1.SchemeGroupVersion.String(),
+			Kind:       "ScheduledComplianceScan",
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "default",
+			// This annotation is needed since the ComplianceScanSpec is immutable for ScheduledComplianceScans.
+			Annotations: map[string]string{"resources.gardener.cloud/delete-on-invalid-update": "true"},
+		},
+		Spec: *c.values.DefaultScheduledScanSpec,
+	}
+
+	// Marshal to JSON first because go.yaml.in/yaml/v4 ignores json: struct tags
+	// and the diki-operator types only have json: tags.
+	jsonData, err := json.Marshal(scan)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ScheduledComplianceScan to JSON: %w", err)
+	}
+	var raw any
+	if err := json.Unmarshal(jsonData, &raw); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal ScheduledComplianceScan JSON: %w", err)
+	}
+	yamlData, err := yaml.Marshal(raw)
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal ScheduledComplianceScan to YAML: %w", err)
+	}
+	return yamlData, nil
 }

@@ -25,4 +25,23 @@ kind: Configuration
 baseDikiConfig: |
 {{ .Values.dikiServiceConfig.baseDikiConfig | indent 2 }}
 {{- end }}
+{{- if and .Values.dikiServiceConfig .Values.dikiServiceConfig.defaultScheduledScan }}
+defaultScheduledScan:
+  {{- with .Values.dikiServiceConfig.defaultScheduledScan }}
+  schedule: {{ .schedule | quote }}
+  {{- if .successfulScansHistoryLimit }}
+  successfulScansHistoryLimit: {{ .successfulScansHistoryLimit }}
+  {{- end }}
+  {{- if .failedScansHistoryLimit }}
+  failedScansHistoryLimit: {{ .failedScansHistoryLimit }}
+  {{- end }}
+  {{- if .rulesets }}
+  rulesets:
+  {{- range .rulesets }}
+  - id: {{ .id | quote }}
+    version: {{ .version | quote }}
+  {{- end }}
+  {{- end }}
+  {{- end }}
+{{- end }}
 {{- end -}}

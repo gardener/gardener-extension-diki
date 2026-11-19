@@ -8,6 +8,7 @@ import (
 	"context"
 	"fmt"
 
+	dikiv1alpha1 "github.com/gardener/diki-operator/pkg/apis/diki/v1alpha1"
 	gardencorev1beta1 "github.com/gardener/gardener/pkg/apis/core/v1beta1"
 	v1beta1constants "github.com/gardener/gardener/pkg/apis/core/v1beta1/constants"
 	resourcesv1alpha1 "github.com/gardener/gardener/pkg/apis/resources/v1alpha1"
@@ -244,6 +245,47 @@ var _ = Describe("Component", func() {
 					&apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{Name: "reportoutputs.diki.gardener.cloud"}},
 					&apiextensionsv1.CustomResourceDefinition{ObjectMeta: metav1.ObjectMeta{Name: "scheduledcompliancescans.diki.gardener.cloud"}},
 				))
+			})
+
+			It("should not inject a default ScheduledComplianceScan when DefaultScheduledScanSpec is nil", func() {
+				Expect(managedResourceShoot.Spec.SecretRefs).To(HaveLen(1))
+				secret := &corev1.Secret{}
+				Expect(fakeClient.Get(ctx, client.ObjectKey{Name: managedResourceShoot.Spec.SecretRefs[0].Name, Namespace: namespace}, secret)).To(Succeed())
+				Expect(secret.Data).NotTo(HaveKey("default-scheduledcompliancescan.yaml"))
+			})
+
+			It("should inject a default ScheduledComplianceScan when DefaultScheduledScanSpec is set", func() {
+				values.DefaultScheduledScanSpec = &dikiv1alpha1.ScheduledComplianceScanSpec{
+					Schedule:                    "0 22 * * *",
+					SuccessfulScansHistoryLimit: ptr.To[int32](3),
+					FailedScansHistoryLimit:     ptr.To[int32](1),
+					ScanTemplate: dikiv1alpha1.ScheduledComplianceScanTemplate{
+						Spec: dikiv1alpha1.ComplianceScanSpec{
+							Rulesets: []dikiv1alpha1.RulesetConfig{
+								{ID: "disa-kubernetes-stig", Version: "v2r6"},
+							},
+						},
+					},
+				}
+				comp = dikioperator.New(fakeClient, values)
+
+				Expect(comp.Deploy(ctx)).To(Succeed())
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(managedResourceShoot), managedResourceShoot)).To(Succeed())
+
+				Expect(managedResourceShoot.Spec.SecretRefs).To(HaveLen(1))
+				secret := &corev1.Secret{}
+				Expect(fakeClient.Get(ctx, client.ObjectKey{Name: managedResourceShoot.Spec.SecretRefs[0].Name, Namespace: namespace}, secret)).To(Succeed())
+				Expect(secret.Data).To(HaveKey("default-scheduledcompliancescan.yaml"))
+
+				scanYAML := string(secret.Data["default-scheduledcompliancescan.yaml"])
+				Expect(scanYAML).To(ContainSubstring("schedule: 0 22 * * *"))
+				Expect(scanYAML).To(ContainSubstring("kind: ScheduledComplianceScan"))
+				Expect(scanYAML).To(ContainSubstring("name: default"))
+				Expect(scanYAML).To(ContainSubstring("resources.gardener.cloud/delete-on-invalid-update: \"true\""))
+				Expect(scanYAML).To(ContainSubstring("id: disa-kubernetes-stig"))
+				Expect(scanYAML).To(ContainSubstring("version: v2r6"))
+				Expect(scanYAML).To(ContainSubstring("successfulScansHistoryLimit: 3"))
+				Expect(scanYAML).To(ContainSubstring("failedScansHistoryLimit: 1"))
 			})
 		})
 	})

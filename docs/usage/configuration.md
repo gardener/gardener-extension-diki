@@ -6,9 +6,9 @@ The `diki` extension deploys the [diki-operator](https://github.com/gardener/dik
 
 Once enabled, Shoot cluster users can create `ComplianceScan`, `ScheduledComplianceScan`, and `ReportOutput` resources in the Shoot cluster to run compliance checks against supported rulesets (e.g. DISA Kubernetes STIG).
 
-## Shoot Configuration
+For Gardener operator configuration (extension controller config, default scheduled scans), see [operator-configuration.md](operator-configuration.md).
 
-### Enabling the Extension
+## Enabling the Extension
 
 The extension is not active by default and must be explicitly enabled per Shoot. Add a `diki` entry to `spec.extensions` in your Shoot resource:
 
@@ -26,7 +26,7 @@ spec:
 
 The extension does not require any `providerConfig`. Once the Shoot is reconciled, the diki-operator is deployed and the necessary CRDs (`ComplianceScan`, `ScheduledComplianceScan`, `ReportOutput`) are available in the Shoot cluster.
 
-### Disabling the Extension
+## Disabling the Extension
 
 To disable the extension, remove the `diki` entry from `spec.extensions`. The extension cleans up all deployed resources. Note that deleting the CRDs cascades to all custom resources (compliance scans, scheduled scans, report outputs) in the Shoot cluster.
 
