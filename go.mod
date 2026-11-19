@@ -19,7 +19,7 @@ require (
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.92.1
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.0.10
-	go.yaml.in/yaml/v4 v4.0.0-rc.6
+	go.yaml.in/yaml/v4 v4.0.0
 	k8s.io/api v0.36.4
 	k8s.io/apiextensions-apiserver v0.36.4
 	k8s.io/apimachinery v0.36.4
