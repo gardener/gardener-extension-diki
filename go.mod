@@ -18,7 +18,7 @@ require (
 	github.com/onsi/gomega v1.44.0
 	github.com/prometheus-operator/prometheus-operator/pkg/apis/monitoring v0.94.2
 	github.com/spf13/cobra v1.10.2
-	github.com/spf13/pflag v1.0.10
+	github.com/spf13/pflag v1.1.0
 	go.yaml.in/yaml/v4 v4.0.0
 	k8s.io/api v0.37.2
 	k8s.io/apiextensions-apiserver v0.37.2
