@@ -30,8 +30,6 @@ build:
       requires:
         - image: local-skaffold/gardener-extension-diki
           alias: IMG
-  insecureRegistries:
-    - registry.local.gardener.cloud:5001
 manifests:
   kustomize:
     paths:

@@ -9,6 +9,10 @@ patches:
     - op: replace
       path: /spec/deployment/extension/helm/ociRepository/ref
       value: local-skaffold/gardener-extension-diki/charts/extension
+    - op: add
+      path: /spec/deployment/extension/helm/ociRepository/caBundleSecretRef
+      value:
+        name: gardener-local-registry-ca
   target:
     group: operator.gardener.cloud
     kind: Extension
