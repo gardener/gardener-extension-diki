@@ -10,7 +10,7 @@ runs:
       run: |
         version=$(grep -oP 'FROM.*golang:\K[0-9]+\.[0-9]+\.[0-9]+' Dockerfile)
         echo "version=$version" >> "$GITHUB_OUTPUT"
-    - uses: actions/setup-go@v7
+    - uses: actions/setup-go@d8cbb8045d7f43706b9177cceb36c1f91a6644d5 # v7
       with:
         go-version: ${{ steps.go-version.outputs.version }}
     - name: make-generate
