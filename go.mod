@@ -20,11 +20,11 @@ require (
 	github.com/spf13/cobra v1.10.2
 	github.com/spf13/pflag v1.1.0
 	go.yaml.in/yaml/v4 v4.0.0
-	k8s.io/api v0.37.2
-	k8s.io/apiextensions-apiserver v0.37.2
-	k8s.io/apimachinery v0.37.2
+	k8s.io/api v0.37.3
+	k8s.io/apiextensions-apiserver v0.37.3
+	k8s.io/apimachinery v0.37.3
 	k8s.io/autoscaler/vertical-pod-autoscaler v1.7.3
-	k8s.io/component-base v0.37.2
+	k8s.io/component-base v0.37.3
 	k8s.io/utils v0.0.0-20261023123148-ca04ba58ecab
 	sigs.k8s.io/controller-runtime v0.25.3
 )
@@ -224,9 +224,9 @@ require (
 	helm.sh/helm/v4 v4.3.1 // indirect
 	istio.io/api v1.29.10 // indirect
 	istio.io/client-go v1.29.2 // indirect
-	k8s.io/apiserver v0.37.2 // indirect
-	k8s.io/client-go v0.37.2 // indirect
-	k8s.io/code-generator v0.37.2 // indirect
+	k8s.io/apiserver v0.37.3 // indirect
+	k8s.io/client-go v0.37.3 // indirect
+	k8s.io/code-generator v0.37.3 // indirect
 	k8s.io/gengo/v2 v2.0.0-20260408192533-25e2208e0dc3 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/kube-aggregator v0.37.2 // indirect
@@ -234,7 +234,7 @@ require (
 	k8s.io/kubelet v0.37.2 // indirect
 	k8s.io/metrics v0.37.2 // indirect
 	k8s.io/pod-security-admission v0.37.2 // indirect
-	k8s.io/streaming v0.37.2 // indirect
+	k8s.io/streaming v0.37.3 // indirect
 	sigs.k8s.io/controller-tools v0.22.0 // indirect
 	sigs.k8s.io/gateway-api v1.6.1 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
